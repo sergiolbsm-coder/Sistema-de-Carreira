@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teste de Âncoras de Carreira</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+
+:root{
+  --ink:#0a0a0f;--paper:#f5f3ee;--accent:#c8401e;--accent2:#1a4db0;
+  --gold:#c9a84c;--muted:#6b6760;--border:#d4d0c8;--card:#fff;
+  --prog:#e8e5de;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+
+/* HERO */
+.hero{background:var(--ink);color:var(--paper);padding:60px 40px 48px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-60px;right:-60px;width:320px;height:320px;border:2px solid rgba(201,168,76,.15);border-radius:50%}
+.hero::after{content:'';position:absolute;bottom:-80px;left:20%;width:200px;height:200px;border:1px solid rgba(200,64,30,.2);border-radius:50%}
+.hero-inner{max-width:900px;margin:0 auto;position:relative;z-index:1}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 14px;border-radius:30px;margin-bottom:22px}
+.badge::before{content:'◆';font-size:8px}
+h1{font-family:'Syne',sans-serif;font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.05;letter-spacing:-.02em;margin-bottom:16px}
+h1 span{color:var(--gold)}
+.hero p{font-size:15px;color:rgba(245,243,238,.65);max-width:520px;line-height:1.7;margin-bottom:28px}
+.hero-meta{display:flex;gap:28px;flex-wrap:wrap}
+.meta-item{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(245,243,238,.5);font-family:'Syne',sans-serif}
+.meta-item strong{color:var(--paper);font-weight:600}
+
+/* PROGRESS */
+.progress-bar-wrap{background:var(--paper);padding:0 40px;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border)}
+.progress-bar-inner{max-width:900px;margin:0 auto;padding:14px 0}
+.progress-label{display:flex;justify-content:space-between;align-items:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.progress-track{height:6px;background:var(--prog);border-radius:999px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:999px;transition:width .4s cubic-bezier(.4,0,.2,1);width:0%}
+
+/* MAIN */
+.main{max-width:900px;margin:0 auto;padding:40px 40px 80px}
+
+/* SECTION HEADER */
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.section-num{width:36px;height:36px;background:var(--ink);color:var(--gold);border-radius:50%;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.section-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.section-sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* ID GRID */
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:40px}
+.id-grid .full{grid-column:1/-1}
+.field label{display:block;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.field input,.field select{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px;transition:border-color .2s;outline:none}
+.field input:focus,.field select:focus{border-color:var(--accent2)}
+.required-star{color:var(--accent);margin-left:3px}
+
+/* INSTRUCTIONS */
+.instructions-box{background:var(--ink);color:var(--paper);border-radius:12px;padding:28px 32px;margin-bottom:40px;position:relative;overflow:hidden}
+.instructions-box::after{content:'!';position:absolute;right:24px;top:20px;font-family:'Syne',sans-serif;font-size:80px;font-weight:800;color:rgba(201,168,76,.07);line-height:1}
+.instructions-box h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+.instructions-box p{font-size:13.5px;line-height:1.75;color:rgba(245,243,238,.8)}
+.scale-demo{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:flex-end}
+.scale-demo-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.scale-demo-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;border:2px solid rgba(255,255,255,.15);color:rgba(245,243,238,.45);font-size:12px}
+.scale-demo-dot.low{background:rgba(255,255,255,.05)}
+.scale-demo-dot.mid{background:rgba(201,168,76,.18);color:var(--gold);border-color:rgba(201,168,76,.5)}
+.scale-demo-dot.high{background:var(--accent);color:#fff;border-color:var(--accent)}
+.scale-demo-label{font-size:9px;color:rgba(245,243,238,.35);letter-spacing:.04em;text-align:center;max-width:38px}
+
+/* QUESTION CARDS */
+.question-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:22px 26px;margin-bottom:10px;transition:border-color .2s,box-shadow .2s}
+.question-card.answered{border-color:rgba(26,77,176,.4);background:rgba(26,77,176,.02)}
+.question-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.07)}
+.question-top{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px}
+.question-number{min-width:28px;height:28px;border-radius:6px;background:var(--prog);font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--muted);display:flex;align-items:center;justify-content:center;margin-top:1px;transition:background .2s,color .2s;flex-shrink:0}
+.question-card.answered .question-number{background:var(--accent2);color:#fff}
+.question-text{font-size:14px;line-height:1.65;color:var(--ink)}
+.scale-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.scale-label-left,.scale-label-right{font-size:10px;color:var(--muted);flex-shrink:0;font-family:'Syne',sans-serif;letter-spacing:.04em}
+.scale-label-left{min-width:74px;text-align:right}
+.scale-label-right{min-width:74px;text-align:left}
+.scale-options{display:flex;gap:6px;flex:1;justify-content:center}
+.scale-options label{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+.scale-options label input[type=radio]{display:none}
+.scale-options label .dot{width:38px;height:38px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--muted);transition:all .15s;background:var(--paper)}
+.scale-options label:hover .dot{border-color:var(--accent2);color:var(--accent2);background:rgba(26,77,176,.06);transform:scale(1.08)}
+.scale-options label input:checked + .dot{background:var(--ink);border-color:var(--ink);color:var(--gold);transform:scale(1.12);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+
+/* SUBMIT */
+.submit-zone{margin-top:48px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.completion-status{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-align:center}
+.completion-status.ready{color:#2d8a4e}
+.btn-submit{padding:18px 48px;background:var(--ink);color:var(--paper);border:none;border-radius:50px;cursor:pointer;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:.05em;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;gap:10px}
+.btn-submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.2)}
+.btn-submit:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-submit::after{content:'→'}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,15,.88);backdrop-filter:blur(6px);z-index:1000;overflow-y:auto;padding:30px 16px}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center}
+.modal{background:var(--paper);border-radius:20px;width:100%;max-width:820px;overflow:hidden;animation:slideUp .4s cubic-bezier(.4,0,.2,1)}
+@keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+
+.modal-header{background:var(--ink);padding:36px 40px 28px;position:relative;overflow:hidden}
+.modal-header::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border:1.5px solid rgba(201,168,76,.12);border-radius:50%}
+.modal-header h2{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--paper);line-height:1.1;position:relative;z-index:1}
+.modal-header h2 span{color:var(--gold)}
+.modal-candidate{font-size:13px;color:rgba(245,243,238,.5);margin-top:6px;position:relative;z-index:1}
+
+.modal-body{padding:32px 40px}
+
+/* ANCHOR WINNER */
+.anchor-winner{background:var(--ink);color:var(--paper);border-radius:14px;padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;gap:22px}
+.anchor-icon{width:60px;height:60px;border-radius:14px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.anchor-winner-info h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--paper);margin-bottom:4px}
+.anchor-winner-info p{font-size:12px;color:rgba(245,243,238,.55);line-height:1.6}
+
+/* RESULTS BARS */
+.results-grid{display:grid;gap:8px;margin-bottom:24px}
+.result-row{display:grid;grid-template-columns:200px 1fr 40px;align-items:center;gap:12px}
+.result-meta{display:flex;align-items:center;gap:8px}
+.result-color{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.result-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700}
+.result-bar-wrap{height:7px;background:var(--prog);border-radius:999px;overflow:hidden}
+.result-bar{height:100%;border-radius:999px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.result-score{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--ink);text-align:right}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px}
+.tab-btn{padding:10px 18px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:color .2s,border-color .2s}
+.tab-btn.active{color:var(--ink);border-bottom-color:var(--ink)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* ANCHOR DETAIL CARD */
+.anchor-detail{border:1.5px solid var(--border);border-radius:12px;padding:22px 24px;margin-bottom:16px}
+.anchor-detail-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.anchor-detail-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.anchor-detail-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800}
+.anchor-detail-subtitle{font-size:12px;color:var(--muted);margin-top:2px}
+.anchor-section-label{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;margin-top:12px}
+.anchor-desc{font-size:13.5px;line-height:1.75;color:var(--ink)}
+.chips-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;font-family:'Syne',sans-serif}
+.chip-cargo{background:rgba(26,77,176,.1);color:var(--accent2)}
+.chip-area{background:rgba(201,168,76,.12);color:#7a5c10}
+
+/* SCORES COLLAPSE */
+.all-anchors-section{margin-top:20px}
+.all-anchor-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;margin-bottom:6px;background:var(--paper)}
+.all-anchor-icon-sm{font-size:16px;flex-shrink:0}
+.all-anchor-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;min-width:180px}
+.all-anchor-bar-wrap{flex:1;height:6px;background:var(--prog);border-radius:999px;overflow:hidden}
+.all-anchor-bar{height:100%;border-radius:999px}
+.all-anchor-score{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;min-width:36px;text-align:right}
+
+/* MODAL ACTIONS */
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.btn-pdf{flex:1;padding:14px 22px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
+.btn-pdf:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(200,64,30,.35)}
+.btn-xlsx{flex:1;padding:14px 22px;background:#1d6b3e;color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
+.btn-xlsx:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(29,107,62,.35)}
+.btn-retry{padding:14px 22px;background:transparent;color:var(--ink);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:border-color .15s}
+.btn-retry:hover{border-color:var(--ink)}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:var(--paper);padding:12px 24px;border-radius:30px;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;opacity:0;z-index:9999;white-space:nowrap;border-left:4px solid var(--gold)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+@media(max-width:640px){
+  .main{padding:24px 16px 60px}
+  .hero{padding:36px 20px 32px}
+  .id-grid{grid-template-columns:1fr}
+  .scale-label-left,.scale-label-right{display:none}
+  .scale-options label .dot{width:32px;height:32px;font-size:12px}
+  .modal-body{padding:24px 20px}
+  .modal-header{padding:28px 20px 20px}
+  .anchor-winner{flex-direction:column;gap:14px}
+  .result-row{grid-template-columns:140px 1fr 36px}
+  .progress-bar-wrap{padding:0 16px}
+  .tabs{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="badge">Sistema de Carreira · Módulo 1</div>
+    <h1>Âncoras de<br><span>Carreira</span></h1>
+    <p>Desenvolvido por Edgar Schein, este diagnóstico identifica os valores centrais que guiam suas decisões profissionais. Responda com total honestidade para resultados precisos.</p>
+    <div class="hero-meta">
+      <div class="meta-item">⏱ <strong>15–20 min</strong></div>
+      <div class="meta-item">📋 <strong>40 questões</strong></div>
+      <div class="meta-item">🎯 <strong>8 âncoras</strong></div>
+      <div class="meta-item">📄 <strong>PDF + XLS</strong> ao final</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-bar-wrap">
+  <div class="progress-bar-inner">
+    <div class="progress-label">
+      <span>Progresso</span>
+      <span id="prog-count">0 / 40 respondidas</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- IDENTIFICAÇÃO -->
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <div>
+      <div class="section-title">Identificação</div>
+      <div class="section-sub">Dados do profissional — campos com <span style="color:var(--accent)">*</span> são obrigatórios</div>
+    </div>
+  </div>
+  <div class="id-grid">
+    <div class="field full">
+      <label>Nome completo <span class="required-star">*</span></label>
+      <input type="text" id="f-nome" placeholder="Seu nome completo">
+    </div>
+    <div class="field full">
+      <label>E-mail <span class="required-star">*</span></label>
+      <input type="email" id="f-email" placeholder="seu@email.com.br">
+    </div>
+    <div class="field">
+      <label>Cargo atual</label>
+      <input type="text" id="f-cargo" placeholder="Ex: Gerente de Projetos">
+    </div>
+    <div class="field">
+      <label>Empresa</label>
+      <input type="text" id="f-empresa" placeholder="Ex: ABC Ltda">
+    </div>
+    <div class="field">
+      <label>Tempo de carreira</label>
+      <select id="f-tempo">
+        <option value="">Selecione...</option>
+        <option>Menos de 2 anos</option>
+        <option>2 a 5 anos</option>
+        <option>5 a 10 anos</option>
+        <option>10 a 20 anos</option>
+        <option>Mais de 20 anos</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Nível hierárquico</label>
+      <select id="f-nivel">
+        <option value="">Selecione...</option>
+        <option>Analista / Especialista</option>
+        <option>Coordenador / Supervisor</option>
+        <option>Gerente</option>
+        <option>Diretor</option>
+        <option>C-Level / VP</option>
+        <option>Empresário / Sócio</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- INSTRUÇÕES -->
+  <div class="instructions-box">
+    <h3>Como responder</h3>
+    <p>Para cada afirmação, indique <strong>o quanto ela se aplica a você</strong> em sua vida profissional. Use a escala de <strong>1 a 6</strong>.</p>
+    <div class="scale-demo">
+      <div class="scale-demo-item"><div class="scale-demo-dot low">1</div><div class="scale-demo-label">Não se aplica</div></div>
+      <div class="scale-demo-item"><div class="scale-demo-dot low">2</div><div class="scale-demo-label">Pouco</div></div>
+      <div class="scale-demo-item"><div class="scale-demo-dot mid">3</div><div class="scale-demo-label">Às vezes</div></div>
+      <div class="scale-demo-item"><div class="scale-demo-dot mid">4</div><div class="scale-demo-label">Frequente</div></div>
+      <div class="scale-demo-item"><div class="scale-demo-dot high">5</div><div class="scale-demo-label">Muito</div></div>
+      <div class="scale-demo-item"><div class="scale-demo-dot high">6</div><div class="scale-demo-label">Totalmente</div></div>
+    </div>
+  </div>
+
+  <!-- QUESTÕES -->
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <div>
+      <div class="section-title">Questionário</div>
+      <div class="section-sub">40 afirmações sobre sua vida profissional</div>
+    </div>
+  </div>
+  <div id="questions-container"></div>
+
+  <!-- SUBMIT -->
+  <div class="submit-zone">
+    <div class="completion-status" id="completion-status">Responda todas as 40 questões para continuar</div>
+    <button class="btn-submit" id="btn-submit" disabled onclick="calcularResultado()">Ver meu Resultado</button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Sua <span>Âncora</span> de Carreira</h2>
+      <div class="modal-candidate" id="modal-candidate"></div>
+    </div>
+    <div class="modal-body">
+      <div class="anchor-winner" id="anchor-winner"></div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('pontuacao',this)">Pontuação</button>
+        <button class="tab-btn" onclick="switchTab('ancora',this)">Sua Âncora</button>
+        <button class="tab-btn" onclick="switchTab('todas',this)">Todas as Âncoras</button>
+      </div>
+
+      <!-- TAB: PONTUAÇÃO -->
+      <div class="tab-content active" id="tab-pontuacao">
+        <div class="results-grid" id="results-grid"></div>
+      </div>
+
+      <!-- TAB: SUA ÂNCORA -->
+      <div class="tab-content" id="tab-ancora">
+        <div id="winner-detail"></div>
+      </div>
+
+      <!-- TAB: TODAS -->
+      <div class="tab-content" id="tab-todas">
+        <div id="all-anchors-detail"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-pdf" onclick="gerarPDF()">⬇ Baixar PDF</button>
+        <button class="btn-xlsx" onclick="salvarHistoricoXLSX()">📊 Salvar em Planilha</button>
+        <button class="btn-retry" onclick="reiniciar()">Refazer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DADOS ────────────────────────────────────────────────────────────────────
+const QUESTIONS=[
+  {id:1,text:"Sonho em ser tão bom no que faço, de tal forma que meus conhecimentos especializados sejam constantemente procurados."},
+  {id:2,text:"Sinto-me mais realizado em meu trabalho quando sou capaz de integrar e gerenciar o esforço dos outros."},
+  {id:3,text:"Sonho em ter uma carreira que me dê a liberdade de fazer o trabalho à minha maneira e no tempo por mim programado."},
+  {id:4,text:"Segurança e estabilidade são mais importantes para mim do que liberdade e autonomia."},
+  {id:5,text:"Estou sempre procurando ideias que me permitam iniciar meu próprio negócio."},
+  {id:6,text:"Sinto-me bem em minha carreira apenas quando tenho a sensação de ter feito uma contribuição real para o bem da sociedade."},
+  {id:7,text:"Sonho com uma carreira na qual eu possa solucionar problemas ou vencer situações extremamente desafiadoras."},
+  {id:8,text:"Preferiria deixar meu emprego do que ser colocado em um trabalho que comprometa minha capacidade de me dedicar aos assuntos pessoais e familiares."},
+  {id:9,text:"Sinto-me bem sucedido em minha carreira apenas quando posso desenvolver minhas habilidades técnicas ou funcionais a um nível de competência muito alto."},
+  {id:10,text:"Sonho em dirigir uma organização complexa e tomar decisões que afetem muitas pessoas."},
+  {id:11,text:"Sinto-me mais realizado em meu trabalho quando tenho total liberdade de definir minhas próprias tarefas, horários e procedimentos."},
+  {id:12,text:"Preferiria deixar meu emprego do que aceitar uma tarefa que possa colocar em risco minha segurança na organização."},
+  {id:13,text:"Montar meu próprio negócio é mais importante para mim do que atingir uma alta posição gerencial como empregado."},
+  {id:14,text:"Sinto-me mais realizado em minha carreira quando posso utilizar meus talentos a serviço dos outros."},
+  {id:15,text:"Sinto-me realizado em minha carreira apenas quando enfrento e supero desafios extremamente difíceis."},
+  {id:16,text:"Sonho com uma carreira que me permita integrar minhas necessidades pessoais, familiares e de trabalho."},
+  {id:17,text:"Tornar-me um gerente técnico em minha área de especialização é mais atraente para mim do que tornar-me um gerente geral."},
+  {id:18,text:"Sentir-me-ei bem sucedido em minha carreira apenas quando me tornar um gerente geral em alguma organização."},
+  {id:19,text:"Sentir-me-ei bem sucedido em minha carreira apenas quando alcançar total autonomia e liberdade."},
+  {id:20,text:"Procuro trabalhos em organizações que me deem senso de segurança e estabilidade."},
+  {id:21,text:"Sinto-me realizado em minha carreira quando tenho a oportunidade de construir algo que seja resultado unicamente de minhas próprias ideias e esforços."},
+  {id:22,text:"Utilizar minhas habilidades para tornar o mundo um lugar melhor para se viver e trabalhar é mais importante para mim do que alcançar uma posição gerencial de alto nível."},
+  {id:23,text:"Sinto-me mais realizado em minha carreira quando solucionei problemas insolúveis ou venci o que aparentemente era impossível de ser vencido."},
+  {id:24,text:"Sinto-me bem sucedido na vida apenas quando fui capaz de equilibrar minhas necessidades pessoais, familiares e de carreira."},
+  {id:25,text:"Preferiria deixar meu emprego do que aceitar uma tarefa de rodízio que me afaste da minha área de experiência."},
+  {id:26,text:"Tornar-me um gerente geral é mais atraente para mim do que tornar-me um gerente técnico em minha área de especialização."},
+  {id:27,text:"Para mim, poder fazer um trabalho à minha própria maneira, sem regras e restrições, é mais importante do que segurança."},
+  {id:28,text:"Sinto-me mais realizado em meu trabalho quando percebo que tenho total segurança financeira e estabilidade no trabalho."},
+  {id:29,text:"Sinto-me bem sucedido em meu trabalho apenas quando posso criar ou construir algo que seja inteiramente de minha autoria."},
+  {id:30,text:"Sonho em ter uma carreira que faça uma real contribuição à humanidade e à sociedade."},
+  {id:31,text:"Procuro oportunidades de trabalho que desafiem fortemente minhas habilidades para solucionar problemas."},
+  {id:32,text:"Equilibrar as exigências da minha vida pessoal e profissional é mais importante do que alcançar alta posição gerencial."},
+  {id:33,text:"Sinto-me plenamente realizado em meu trabalho quando sou capaz de empregar minhas habilidades e talentos especiais."},
+  {id:34,text:"Preferiria deixar minha organização do que aceitar um emprego que me afastasse da trajetória de gerência geral."},
+  {id:35,text:"Preferiria deixar minha organização do que aceitar um emprego que reduza minha autonomia e liberdade."},
+  {id:36,text:"Sonho em ter uma carreira que me dê senso de segurança e estabilidade."},
+  {id:37,text:"Sonho em iniciar e montar meu próprio negócio."},
+  {id:38,text:"Preferiria deixar minha organização do que aceitar uma tarefa que prejudique minha capacidade de servir aos outros."},
+  {id:39,text:"Trabalhar em problemas praticamente insolúveis para mim é mais importante do que alcançar uma posição gerencial de alto nível."},
+  {id:40,text:"Sempre procurei oportunidades de trabalho que minimizassem interferências com assuntos pessoais e familiares."}
+];
+
+const ANCHORS={
+  TF:{
+    name:"Técnico Funcional",icon:"🔬",color:"#3b82f6",qs:[1,9,17,25,33],
+    descricao:"Você é movido pela excelência técnica e especialização. Sua maior satisfação vem de dominar profundamente uma área e ser reconhecido como referência. Prefere aprofundar conhecimentos a gerenciar pessoas, e sente-se realizado quando suas competências são valorizadas e continuamente desenvolvidas. A identidade profissional está intimamente ligada à competência técnica.",
+    motivadores:["Desenvolvimento técnico contínuo","Reconhecimento pela expertise","Autonomia em decisões técnicas","Acesso às últimas tecnologias e metodologias","Ambiente de aprendizado avançado"],
+    cargos:["Especialista Sênior","Arquiteto de Soluções","Cientista de Dados","Engenheiro Sênior","Consultor Técnico","Pesquisador","Médico Especialista","Advogado Especializado","CTO Técnico","Tech Lead"],
+    areas:["Tecnologia & Engenharia","Ciência & P&D","Direito Especializado","Medicina","Finanças (análise quantitativa)","Academia"]
+  },
+  GG:{
+    name:"Gerência Geral",icon:"👑",color:"#8b5cf6",qs:[2,10,18,26,34],
+    descricao:"Você tem vocação genuína para liderança executiva e gestão de alta complexidade. Sente-se realizado integrando equipes multifuncionais, tomando decisões estratégicas de grande impacto e sendo responsável por resultados abrangentes. Ascensão hierárquica, poder de decisão e visibilidade organizacional são fundamentais para sua motivação e sentido de sucesso.",
+    motivadores:["Liderança de equipes grandes e diversas","Responsabilidade por resultados estratégicos","Visibilidade e prestígio organizacional","Tomada de decisões de alto impacto","Progressão hierárquica clara"],
+    cargos:["CEO / Presidente","Diretor Executivo","VP de Operações","Country Manager","Gerente Geral","Sócio-Gerente","Superintendente","COO","Head de Divisão"],
+    areas:["Grandes Corporações","Consultoria de Gestão","Setor Público (alto escalão)","Bancos e Financeiras","Conglomerados Industriais"]
+  },
+  AI:{
+    name:"Autonomia e Independência",icon:"🕊️",color:"#10b981",qs:[3,11,19,27,35],
+    descricao:"Independência é inegociável para você. Trabalha melhor quando pode definir seu próprio ritmo, métodos e objetivos. Restrições excessivas, microgestão e burocracia são verdadeiros bloqueadores de performance. Valoriza a liberdade de atuação acima de status hierárquico, salário elevado ou segurança — e está disposto a sacrificar remuneração por mais autonomia.",
+    motivadores:["Liberdade para definir processos e horários","Ausência de microgestão","Trabalho por resultado, não por presença","Projetos com escopo flexível","Capacidade de recusar tarefas desalinhadas"],
+    cargos:["Consultor Independente","Freelancer Sênior","Professor Universitário","Coach Executivo","Perito Judicial","Empreendedor Solo","Pesquisador Independente","Gerente de Projeto Autônomo"],
+    areas:["Consultoria","Educação Superior","Freelancing","Advocacia Autônoma","Startups (fundador)","Coaching"]
+  },
+  SE:{
+    name:"Segurança e Estabilidade",icon:"🛡️",color:"#f59e0b",qs:[4,12,20,28,36],
+    descricao:"Você prioriza previsibilidade, estabilidade financeira e segurança no emprego. Performa melhor em ambientes organizados, com planos de carreira claros e regras bem estabelecidas. Lealdade à organização é genuína e esperada como retribuição. Evita riscos desnecessários e toma decisões de carreira com base em segurança de longo prazo, não em ganho imediato.",
+    motivadores:["Estabilidade financeira e previdenciária","Plano de carreira claro e previsível","Benefícios robustos (saúde, previdência)","Ambiente de trabalho seguro e organizado","Reconhecimento pela lealdade e comprometimento"],
+    cargos:["Servidor Público","Analista de Grandes Corporações","Bancário","Auditor","Gestor de Risco","Administrador Público","Técnico em Carreira Regulada","Analista de Compliance"],
+    areas:["Setor Público","Bancos Tradicionais","Grandes Multinacionais estáveis","Autarquias","Forças Armadas","Utilities (energia, saneamento)"]
+  },
+  CE:{
+    name:"Criatividade e Empreendedorismo",icon:"🚀",color:"#ef4444",qs:[5,13,21,29,37],
+    descricao:"Você é movido pela criação. Construir algo do zero, inovar e ter propriedade sobre os resultados é o que te energiza. Alta tolerância ao risco, necessidade intensa de protagonismo e dificuldade em se realizar apenas como empregado são traços marcantes. Empreender não é uma opção — é uma necessidade psicológica profunda. Ambientes corporativos rígidos sufocam seu potencial.",
+    motivadores:["Criar produtos ou negócios do zero","Propriedade sobre os resultados","Liberdade para inovar sem restrições","Crescimento rápido e escalável","Impacto visível e mensurável das suas criações"],
+    cargos:["Fundador de Startup","Empreendedor Serial","Diretor de Inovação","Head de Novos Negócio","Intrapreneur","Gerente de Produto (novo produto)","Venture Builder","Diretor de Transformação Digital"],
+    areas:["Startups","Venture Capital","Hubs de Inovação","Aceleradoras","Franquias Próprias","Intrapreneurship em Grandes Empresas"]
+  },
+  SD:{
+    name:"Serviço e Dedicação",icon:"❤️",color:"#ec4899",qs:[6,14,22,30,38],
+    descricao:"Trabalho sem propósito não faz sentido para você. Precisa acreditar que sua carreira contribui para algo maior — seja melhorar vidas, transformar comunidades ou servir a uma causa relevante. Rejeita posições lucrativas sem impacto real. Sente-se mais realizado quando utiliza seus talentos a serviço do próximo ou da sociedade, e avalia oportunidades pelo propósito antes do salário.",
+    motivadores:["Impacto social real e mensurável","Alinhamento entre valores pessoais e missão da organização","Trabalho que transforma vidas","Ambientes colaborativos e empáticos","Reconhecimento pelo propósito, não apenas pelo resultado financeiro"],
+    cargos:["Gestor de ESG","Médico / Enfermeiro","Educador / Professor","Assistente Social","Consultor de Impacto Social","Líder de ONG","Gestor de Saúde Pública","Psicólogo Organizacional","Head de Responsabilidade Social"],
+    areas:["ONGs e Terceiro Setor","Saúde","Educação","ESG Corporativo","Empresas B","Organizações Humanitárias","Fundações Sociais"]
+  },
+  PD:{
+    name:"Puro Desafio",icon:"⚡",color:"#f97316",qs:[7,15,23,31,39],
+    descricao:"Você é energizado por problemas extremamente difíceis e situações aparentemente impossíveis. A dificuldade em si é a recompensa — não o cargo, o salário ou o reconhecimento. Entedia-se com rotinas previsíveis. Busca constantemente o próximo grande desafio, disposto a trocar de área, empresa ou país para encontrá-lo. Sua motivação está no problema, não na posição.",
+    motivadores:["Problemas complexos e inéditos","Competição intensa","Ambientes de alta performance e pressão","Metas aparentemente inalcançáveis","Reconhecimento pela capacidade de superar obstáculos extremos"],
+    cargos:["Consultor de Turnaround","Gestor de Crise","Engenheiro de Missões Críticas","Head de Cybersegurança","Estrategista Militar","Trader de Alta Frequência","Gerente de Projetos Complexos","CRO (Chief Risk Officer)"],
+    areas:["Consultoria Estratégica","Defesa e Segurança","Cybersegurança","Mercado Financeiro","Startups em Hypergrowth","Gestão de Crises"]
+  },
+  EV:{
+    name:"Estilo de Vida",icon:"⚖️",color:"#14b8a6",qs:[8,16,24,32,40],
+    descricao:"Equilíbrio entre vida profissional e pessoal é central e inegociável para você. Carreira é importante, mas não pode sufocar família, saúde, hobbies e bem-estar. Valoriza flexibilidade acima de status hierárquico. Avalia oportunidades pela qualidade de vida que proporcionam, não apenas pelo salário. Organizações que respeitam o ser humano integral são onde você performa melhor.",
+    motivadores:["Flexibilidade de horários e localização","Trabalho remoto ou híbrido","Cultura organizacional que respeita limites","Férias e descanso respeitados","Benefícios de bem-estar (saúde mental, ginástica, etc.)"],
+    cargos:["Gerente com Regime Híbrido","Profissional Liberal (horários flexíveis)","Consultor por Projeto","Analista em Empresas Remote-First","Educador (regime parcial)","UX Designer Freelancer","Desenvolvedor Autônomo"],
+    areas:["Empresas Remote-First","Educação","Consultorias Flexíveis","Cooperativas","Scale-ups com Cultura de Bem-Estar","Saúde e Bem-estar"]
+  }
+};
+
+const ANCHOR_ORDER=["TF","GG","AI","SE","CE","SD","PD","EV"];
+
+// ─── RENDER QUESTÕES ──────────────────────────────────────────────────────────
+function renderQuestions(){
+  const c=document.getElementById('questions-container');
+  QUESTIONS.forEach(q=>{
+    const card=document.createElement('div');
+    card.className='question-card';
+    card.id=`card-${q.id}`;
+    let scaleHTML='';
+    for(let v=1;v<=6;v++){
+      scaleHTML+=`<label><input type="radio" name="q${q.id}" value="${v}" onchange="onAnswer(${q.id})"><span class="dot">${v}</span></label>`;
+    }
+    card.innerHTML=`
+      <div class="question-top">
+        <div class="question-number" id="num-${q.id}">${q.id}</div>
+        <div class="question-text">${q.text}</div>
+      </div>
+      <div class="scale-row">
+        <span class="scale-label-left">Não se aplica</span>
+        <div class="scale-options">${scaleHTML}</div>
+        <span class="scale-label-right">Totalmente</span>
+      </div>`;
+    c.appendChild(card);
+  });
+}
+
+function onAnswer(qid){
+  document.getElementById(`card-${qid}`).classList.add('answered');
+  updateProgress();
+}
+
+function countAnswered(){
+  let n=0;
+  QUESTIONS.forEach(q=>{if(document.querySelector(`input[name="q${q.id}"]:checked`))n++;});
+  return n;
+}
+
+function updateProgress(){
+  const done=countAnswered(),total=QUESTIONS.length;
+  const pct=Math.round(done/total*100);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-count').textContent=`${done} / ${total} respondidas`;
+  const btn=document.getElementById('btn-submit'),st=document.getElementById('completion-status');
+  if(done===total){
+    btn.disabled=false;
+    st.textContent='✔ Todas as questões respondidas. Pronto!';
+    st.className='completion-status ready';
+  } else {
+    btn.disabled=true;
+    st.textContent=`Responda todas as 40 questões para continuar (faltam ${total-done})`;
+    st.className='completion-status';
+  }
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+// ─── CÁLCULO ──────────────────────────────────────────────────────────────────
+let G={};
+
+function calcularResultado(){
+  // Validação campos obrigatórios
+  const nome=document.getElementById('f-nome').value.trim();
+  const email=document.getElementById('f-email').value.trim();
+  if(!nome||!email){showToast('⚠ Preencha Nome e E-mail antes de continuar');return;}
+
+  const scores={};
+  ANCHOR_ORDER.forEach(k=>scores[k]=0);
+  Object.entries(ANCHORS).forEach(([key,a])=>{
+    a.qs.forEach(qid=>{
+      const el=document.querySelector(`input[name="q${qid}"]:checked`);
+      if(el)scores[key]+=parseInt(el.value);
+    });
+  });
+
+  const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const winner=sorted[0][0];
+  G={scores,sorted,winner,maxPossible:30,
+     nome,email,
+     cargo:document.getElementById('f-cargo').value.trim(),
+     empresa:document.getElementById('f-empresa').value.trim(),
+     tempo:document.getElementById('f-tempo').value,
+     nivel:document.getElementById('f-nivel').value};
+
+  renderModal();
+  document.getElementById('modal').classList.add('open');
+}
+
+// ─── RENDER MODAL ─────────────────────────────────────────────────────────────
+function renderModal(){
+  const {scores,sorted,winner,maxPossible,nome,cargo,empresa}=G;
+  const aw=ANCHORS[winner];
+
+  // Candidato
+  let cand=nome;
+  if(cargo)cand+=` · ${cargo}`;
+  if(empresa)cand+=` @ ${empresa}`;
+  document.getElementById('modal-candidate').textContent=cand;
+
+  // Winner
+  document.getElementById('anchor-winner').innerHTML=`
+    <div class="anchor-icon">${aw.icon}</div>
+    <div class="anchor-winner-info">
+      <h3>${aw.name}</h3>
+      <p>Pontuação: <strong>${scores[winner]} / ${maxPossible}</strong> pts · ${Math.round(scores[winner]/maxPossible*100)}% de aderência · Âncora primária identificada</p>
+    </div>`;
+
+  // Barras de resultado
+  const grid=document.getElementById('results-grid');
+  grid.innerHTML='';
+  sorted.forEach(([key,score])=>{
+    const a=ANCHORS[key],pct=Math.round(score/maxPossible*100);
+    grid.innerHTML+=`
+      <div class="result-row">
+        <div class="result-meta">
+          <div class="result-color" style="background:${a.color}"></div>
+          <div class="result-name">${a.icon} ${a.name}</div>
+        </div>
+        <div class="result-bar-wrap"><div class="result-bar" style="width:${pct}%;background:${a.color}"></div></div>
+        <div class="result-score">${score}</div>
+      </div>`;
+  });
+
+  // TAB: SUA ÂNCORA
+  renderAnchorDetail('winner-detail', winner, true);
+
+  // TAB: TODAS AS ÂNCORAS
+  const allDiv=document.getElementById('all-anchors-detail');
+  allDiv.innerHTML='';
+  sorted.forEach(([key])=>renderAnchorDetail('all-anchors-detail', key, false));
+}
+
+function renderAnchorDetail(containerId, key, single){
+  const a=ANCHORS[key],s=G.scores[key];
+  const pct=Math.round(s/G.maxPossible*100);
+  const container=document.getElementById(containerId);
+
+  const div=document.createElement('div');
+  div.className='anchor-detail';
+
+  const cargosHTML=a.cargos.map(c=>`<span class="chip chip-cargo">${c}</span>`).join('');
+  const areasHTML=a.areas.map(ar=>`<span class="chip chip-area">${ar}</span>`).join('');
+
+  div.innerHTML=`
+    <div class="anchor-detail-header">
+      <div class="anchor-detail-icon" style="background:${a.color}20">${a.icon}</div>
+      <div>
+        <div class="anchor-detail-title" style="color:${a.color}">${a.name}</div>
+        <div class="anchor-detail-subtitle">${s} pts · ${pct}% de aderência</div>
+      </div>
+    </div>
+    <div class="anchor-section-label">Perfil e Motivação</div>
+    <div class="anchor-desc">${a.descricao}</div>
+    <div class="anchor-section-label">Motivadores-Chave</div>
+    <div class="chips-wrap">${a.motivadores.map(m=>`<span class="chip" style="background:${a.color}15;color:${a.color}">${m}</span>`).join('')}</div>
+    <div class="anchor-section-label">Cargos Sugeridos</div>
+    <div class="chips-wrap">${cargosHTML}</div>
+    <div class="anchor-section-label">Áreas Ideais</div>
+    <div class="chips-wrap">${areasHTML}</div>`;
+
+  container.appendChild(div);
+}
+
+// ─── PDF ──────────────────────────────────────────────────────────────────────
+function gerarPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const {scores,sorted,winner,maxPossible,nome,email,cargo,empresa,tempo,nivel}=G;
+  const aw=ANCHORS[winner];
+  const dataHoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const W=210,H=297,M=20;
+  let y=0;
+
+  function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
+  const acolor=hexToRgb(aw.color);
+
+  // ── CAPA ──
+  doc.setFillColor(10,10,15);doc.rect(0,0,W,H,'F');
+  doc.setFillColor(201,168,76);doc.rect(0,0,4,H,'F');
+  doc.setDrawColor(201,168,76);doc.setLineWidth(0.3);doc.circle(178,48,38);
+  doc.setDrawColor(200,64,30);doc.setLineWidth(0.2);doc.circle(38,218,28);
+
+  // Badge
+  doc.setFillColor(25,25,35);doc.roundedRect(M,34,78,8,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(201,168,76);
+  doc.text('SISTEMA DE CARREIRA  ·  MÓDULO 1',M+5,40);
+
+  // Título
+  doc.setFont('helvetica','bold');doc.setFontSize(40);doc.setTextColor(245,243,238);
+  doc.text('ÂNCORAS',M,72);doc.text('DE CARREIRA',M,86);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(130,128,120);
+  doc.text('Diagnóstico · Metodologia Edgar Schein',M,98);
+
+  doc.setDrawColor(45,45,55);doc.setLineWidth(0.5);doc.line(M,106,W-M,106);
+
+  // Candidato
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(90,88,82);doc.text('PROFISSIONAL',M,116);
+  doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(245,243,238);doc.text(nome,M,125);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(110,108,102);
+  doc.text([cargo,empresa,email].filter(Boolean).join('  ·  '),M,132);
+
+  // Metadados
+  const metas=[[tempo||'—',nivel||'—',dataHoje,'40']];
+  const metaLabels=['TEMPO CARREIRA','NÍVEL HIERÁRQUICO','DATA DO TESTE','QUESTÕES'];
+  metaLabels.forEach((label,i)=>{
+    const bx=M+(i%2)*88,by=148+Math.floor(i/2)*22;
+    doc.setFillColor(20,20,28);doc.roundedRect(bx,by-5,80,16,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(90,88,82);doc.text(label,bx+5,by+1);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(201,168,76);doc.text(metas[0][i]||'—',bx+5,by+8);
+  });
+
+  // Âncora destaque
+  doc.setFillColor(20,20,28);doc.roundedRect(M,205,W-M*2,52,4,4,'F');
+  doc.setFillColor(...acolor);doc.roundedRect(M,205,4,52,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(90,88,82);doc.text('ÂNCORA IDENTIFICADA',M+10,215);
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(245,243,238);doc.text(aw.name,M+10,227);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(110,108,102);
+  doc.text(`${scores[winner]} / ${maxPossible} pontos`,M+10,236);
+  doc.setFont('helvetica','bold');doc.setFontSize(30);doc.setTextColor(...acolor);
+  doc.text(`${Math.round(scores[winner]/maxPossible*100)}%`,W-M-5,232,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,88,82);doc.text('de aderência',W-M-5,240,{align:'right'});
+
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(55,53,50);
+  doc.text('Confidencial · Sistema de Carreira',M,H-10);
+  doc.text(dataHoje,W-M,H-10,{align:'right'});
+
+  // ── P2: RESULTADOS + DESCRITIVO ──
+  doc.addPage();
+  doc.setFillColor(245,243,238);doc.rect(0,0,W,H,'F');
+  doc.setFillColor(201,168,76);doc.rect(0,0,4,H,'F');
+
+  y=22;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(140,138,132);doc.text('RESULTADOS DETALHADOS',M,y);y+=10;
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(10,10,15);doc.text('Pontuação por Âncora',M,y);y+=14;
+
+  sorted.forEach(([key,score],idx)=>{
+    const a=ANCHORS[key],pct=score/maxPossible;
+    const barMax=W-M*2-46;
+    const [r,g,b]=hexToRgb(a.color);
+    if(idx%2===0){doc.setFillColor(238,236,232);doc.roundedRect(M,y-3,W-M*2,20,2,2,'F');}
+    doc.setFillColor(r,g,b);doc.circle(M+4,y+7,2.5,'F');
+    doc.setFont('helvetica',idx===0?'bold':'normal');doc.setFontSize(9);doc.setTextColor(10,10,15);
+    doc.text(`${a.name}`,M+10,y+9);
+    doc.setFillColor(215,213,208);doc.roundedRect(M+82,y+3,barMax,7,2,2,'F');
+    if(barMax*pct>0){doc.setFillColor(r,g,b);doc.roundedRect(M+82,y+3,barMax*pct,7,2,2,'F');}
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(idx===0?r:80,idx===0?g:78,idx===0?b:75);
+    doc.text(`${score}`,W-M,y+10,{align:'right'});
+    if(idx===0){doc.setFontSize(7);doc.setTextColor(...acolor);doc.text('★ PRINCIPAL',W-M-24,y+3);}
+    y+=22;
+  });
+
+  // Descritivo âncora principal
+  y+=6;
+  doc.setFillColor(10,10,15);doc.roundedRect(M,y,W-M*2,8,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(201,168,76);doc.text('PERFIL E MOTIVAÇÃO — '+aw.name.toUpperCase(),M+6,y+5.5);
+  y+=13;
+
+  const descLines=doc.splitTextToSize(aw.descricao,W-M*2-4);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(35,33,30);
+  doc.text(descLines,M+2,y);y+=descLines.length*4.5+8;
+
+  // Motivadores
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...acolor);doc.text('MOTIVADORES-CHAVE',M,y);y+=5;
+  aw.motivadores.forEach(m=>{
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(40,38,35);
+    doc.text(`• ${m}`,M+3,y);y+=5;
+  });
+
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(140,138,132);
+  doc.text(`${nome}  ·  Âncoras de Carreira`,M,H-10);doc.text('2',W-M,H-10,{align:'right'});
+
+  // ── P3: CARGOS + ÁREAS + GABARITO ──
+  doc.addPage();
+  doc.setFillColor(245,243,238);doc.rect(0,0,W,H,'F');
+  doc.setFillColor(201,168,76);doc.rect(0,0,4,H,'F');
+
+  y=22;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(140,138,132);doc.text('SUGESTÕES DE CARREIRA',M,y);y+=10;
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(10,10,15);doc.text('Cargos e Áreas Recomendados',M,y);y+=14;
+
+  // Cargos
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...acolor);doc.text('CARGOS SUGERIDOS',M,y);y+=6;
+  const cargosCols=Math.ceil(aw.cargos.length/2);
+  aw.cargos.forEach((c,i)=>{
+    const col=i%2,row=Math.floor(i/2);
+    const bx=M+col*88,by=y+row*12;
+    doc.setFillColor(240,238,233);doc.roundedRect(bx,by-4,80,9,1.5,1.5,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(10,10,15);doc.text(c,bx+5,by+1.5);
+  });
+  y+=cargosCols*12+8;
+
+  // Áreas
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...acolor);doc.text('ÁREAS IDEAIS',M,y);y+=6;
+  aw.areas.forEach((a2,i)=>{
+    const bx=M+(i%2)*88,by=y+Math.floor(i/2)*12;
+    doc.setFillColor(hexToRgb(aw.color)[0],hexToRgb(aw.color)[1],hexToRgb(aw.color)[2],0.1);
+    doc.setFillColor(245,240,230);doc.roundedRect(bx,by-4,80,9,1.5,1.5,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(10,10,15);doc.text(a2,bx+5,by+1.5);
+  });
+  y+=Math.ceil(aw.areas.length/2)*12+12;
+
+  // Gabarito
+  doc.setFillColor(10,10,15);doc.roundedRect(M,y,W-M*2,7,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(201,168,76);doc.text('GABARITO — SUAS 40 RESPOSTAS',M+6,y+5);
+  y+=11;
+
+  const cols=5,colW=(W-M*2)/cols;
+  QUESTIONS.forEach((q,i)=>{
+    const col=i%cols,row=Math.floor(i/cols);
+    const bx=M+col*colW,by=y+row*16;
+    const val=document.querySelector(`input[name="q${q.id}"]:checked`);
+    const v=val?parseInt(val.value):0;
+    doc.setFillColor(228,226,220);doc.roundedRect(bx,by,colW-2,12,1.5,1.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(120,118,112);doc.text(`Q${q.id}`,bx+3,by+5);
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(10,10,15);doc.text(`${v}`,bx+colW/2,by+9.5,{align:'center'});
+  });
+
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(140,138,132);
+  doc.text(`${nome}  ·  Âncoras de Carreira`,M,H-10);doc.text('3',W-M,H-10,{align:'right'});
+
+  const safeName=(G.nome||'respondente').replace(/[^a-z0-9]/gi,'_');
+  doc.save(`Ancoras_Carreira_${safeName}.pdf`);
+  showToast('✓ PDF gerado com sucesso!');
+}
+
+// ─── XLSX HISTÓRICO ───────────────────────────────────────────────────────────
+const HISTORY_KEY='ancoras_carreira_historico';
+
+function getHistory(){
+  try{return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');}
+  catch{return[];}
+}
+
+function saveHistory(record){
+  const hist=getHistory();
+  hist.unshift(record);
+  try{localStorage.setItem(HISTORY_KEY,JSON.stringify(hist));}
+  catch(e){console.warn('localStorage cheio',e);}
+}
+
+function salvarHistoricoXLSX(){
+  const {scores,sorted,winner,nome,email,cargo,empresa,tempo,nivel}=G;
+  const dataHoje=new Date().toLocaleString('pt-BR');
+
+  // Salvar no localStorage
+  const record={
+    dataHora:dataHoje,nome,email,cargo,empresa,tempo,nivel,
+    ancoraPrincipal:ANCHORS[winner].name,
+    pontosPrincipal:scores[winner],
+    segunda:ANCHORS[sorted[1][0]].name,
+    pontosSegunda:sorted[1][1],
+    TF:scores.TF,GG:scores.GG,AI:scores.AI,SE:scores.SE,
+    CE:scores.CE,SD:scores.SD,PD:scores.PD,EV:scores.EV
+  };
+  saveHistory(record);
+
+  // Gerar XLSX com todos os históricos
+  const hist=getHistory();
+  const wsData=[
+    ['HISTÓRICO DE RESULTADOS — TESTE DE ÂNCORAS DE CARREIRA'],
+    [`Exportado em: ${new Date().toLocaleString('pt-BR')}`],
+    [],
+    ['Data/Hora','Nome','E-mail','Cargo','Empresa','Tempo Carreira','Nível Hierárquico',
+     'Âncora Principal','Pontos (Principal)','2ª Âncora','Pontos (2ª)',
+     'TF','GG','AI','SE','CE','SD','PD','EV']
+  ];
+
+  hist.forEach(r=>{
+    wsData.push([
+      r.dataHora,r.nome,r.email,r.cargo,r.empresa,r.tempo,r.nivel,
+      r.ancoraPrincipal,r.pontosPrincipal,r.segunda,r.pontosSegunda,
+      r.TF,r.GG,r.AI,r.SE,r.CE,r.SD,r.PD,r.EV
+    ]);
+  });
+
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+
+  // Larguras das colunas
+  ws['!cols']=[
+    {wch:18},{wch:24},{wch:28},{wch:22},{wch:20},{wch:16},{wch:18},
+    {wch:26},{wch:10},{wch:22},{wch:10},
+    {wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6}
+  ];
+
+  // Congelar cabeçalho
+  ws['!freeze']={xSplit:0,ySplit:4,topLeftCell:'A5'};
+
+  XLSX.utils.book_append_sheet(wb,ws,'Histórico');
+
+  // Aba referência âncoras
+  const refData=[
+    ['REFERÊNCIA — AS 8 ÂNCORAS DE CARREIRA'],
+    [],
+    ['Cód.','Âncora','Perfil / Motivação Central','Cargos Sugeridos','Áreas Ideais']
+  ];
+  ANCHOR_ORDER.forEach(k=>{
+    const a=ANCHORS[k];
+    refData.push([k,a.name,a.descricao,a.cargos.join(', '),a.areas.join(', ')]);
+  });
+  const wsRef=XLSX.utils.aoa_to_sheet(refData);
+  wsRef['!cols']=[{wch:6},{wch:26},{wch:60},{wch:60},{wch:45}];
+  XLSX.utils.book_append_sheet(wb,wsRef,'Âncoras – Referência');
+
+  XLSX.writeFile(wb,`Historico_Ancoras_Carreira_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast(`✓ Planilha gerada! ${hist.length} respondente(s) no histórico.`);
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ─── REINICIAR ────────────────────────────────────────────────────────────────
+function reiniciar(){
+  document.getElementById('modal').classList.remove('open');
+  document.querySelectorAll('input[type=radio]').forEach(r=>r.checked=false);
+  document.querySelectorAll('.question-card').forEach(c=>c.classList.remove('answered'));
+  // Resetar tabs
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{b.classList.toggle('active',i===0)});
+  document.querySelectorAll('.tab-content').forEach((t,i)=>{t.classList.toggle('active',i===0)});
+  document.getElementById('winner-detail').innerHTML='';
+  document.getElementById('all-anchors-detail').innerHTML='';
+  updateProgress();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderQuestions();
+</script>
+</body>
+</html>
