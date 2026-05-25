@@ -5,14 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teste de Âncoras de Carreira</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
 :root{
-  --ink:#0a0a0f;--paper:#f5f3ee;--accent:#c8401e;--accent2:#1a4db0;
-  --gold:#c9a84c;--muted:#6b6760;--border:#d4d0c8;--card:#fff;
-  --prog:#e8e5de;
+  --ink:#0a0a0f;--paper:#ffffff;--accent:#c8401e;--accent2:#1a4db0;
+  --gold:#c9a84c;--muted:#6b6760;--border:#e0ddd8;--card:#fff;
+  --prog:#eeebe6;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
@@ -159,8 +158,7 @@ h1 span{color:var(--gold)}
 .modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
 .btn-pdf{flex:1;padding:14px 22px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
 .btn-pdf:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(200,64,30,.35)}
-.btn-xlsx{flex:1;padding:14px 22px;background:#1d6b3e;color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
-.btn-xlsx:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(29,107,62,.35)}
+
 .btn-retry{padding:14px 22px;background:transparent;color:var(--ink);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:border-color .15s}
 .btn-retry:hover{border-color:var(--ink)}
 
@@ -195,7 +193,7 @@ h1 span{color:var(--gold)}
       <div class="meta-item">⏱ <strong>15–20 min</strong></div>
       <div class="meta-item">📋 <strong>40 questões</strong></div>
       <div class="meta-item">🎯 <strong>8 âncoras</strong></div>
-      <div class="meta-item">📄 <strong>PDF + XLS</strong> ao final</div>
+      <div class="meta-item">📄 <strong>PDF</strong> ao final</div>
     </div>
   </div>
 </div>
@@ -329,7 +327,6 @@ h1 span{color:var(--gold)}
 
       <div class="modal-actions">
         <button class="btn-pdf" onclick="gerarPDF()">⬇ Baixar PDF</button>
-        <button class="btn-xlsx" onclick="salvarHistoricoXLSX()">📊 Salvar em Planilha</button>
         <button class="btn-retry" onclick="reiniciar()">Refazer</button>
       </div>
     </div>
@@ -620,240 +617,288 @@ function gerarPDF(){
   const dataHoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
   const W=210,H=297,M=20;
   let y=0;
+  let pageNum=1;
 
   function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
   const acolor=hexToRgb(aw.color);
 
-  // ── CAPA ──
-  doc.setFillColor(10,10,15);doc.rect(0,0,W,H,'F');
-  doc.setFillColor(201,168,76);doc.rect(0,0,4,H,'F');
-  doc.setDrawColor(201,168,76);doc.setLineWidth(0.3);doc.circle(178,48,38);
-  doc.setDrawColor(200,64,30);doc.setLineWidth(0.2);doc.circle(38,218,28);
+  // Helper: rodapé padrão
+  function rodape(pg){
+    doc.setFillColor(245,245,245);doc.rect(0,H-18,W,18,'F');
+    doc.setDrawColor(230,230,230);doc.setLineWidth(0.3);doc.line(0,H-18,W,H-18);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,158,155);
+    doc.text('Sistema de Carreira  ·  Âncoras de Carreira  ·  Metodologia Edgar Schein',M,H-7);
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(120,118,115);
+    doc.text(`${nome}`,W/2,H-7,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,158,155);
+    doc.text(`Pág. ${pg}`,W-M,H-7,{align:'right'});
+  }
 
-  // Badge
-  doc.setFillColor(25,25,35);doc.roundedRect(M,34,78,8,2,2,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(201,168,76);
-  doc.text('SISTEMA DE CARREIRA  ·  MÓDULO 1',M+5,40);
+  // Helper: cabeçalho de página interna
+  function cabecalho(label,titulo){
+    doc.setFillColor(255,255,255);doc.rect(0,0,W,H,'F');
+    doc.setFillColor(...acolor);doc.rect(0,0,W,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...acolor);
+    doc.text(label,M,14);
+    doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(10,10,15);
+    doc.text(titulo,M,24);
+    doc.setDrawColor(235,235,235);doc.setLineWidth(0.4);doc.line(M,28,W-M,28);
+    return 36;
+  }
 
-  // Título
-  doc.setFont('helvetica','bold');doc.setFontSize(40);doc.setTextColor(245,243,238);
-  doc.text('ÂNCORAS',M,72);doc.text('DE CARREIRA',M,86);
-  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(130,128,120);
-  doc.text('Diagnóstico · Metodologia Edgar Schein',M,98);
+  // ── P1: CAPA ─────────────────────────────────────────────────────────────
+  doc.setFillColor(255,255,255);doc.rect(0,0,W,H,'F');
+  // Barra superior colorida com âncora
+  const [ar,ag,ab]=acolor;
+  doc.setFillColor(ar,ag,ab);doc.rect(0,0,W,56,'F');
+  // Padrão sutil
+  doc.setFillColor(255,255,255,0.06);
+  for(let i=0;i<8;i++){doc.setDrawColor(255,255,255);doc.setLineWidth(0.15);doc.circle(W-30+i*8,28,30+i*12);}
 
-  doc.setDrawColor(45,45,55);doc.setLineWidth(0.5);doc.line(M,106,W-M,106);
+  // Sistema badge
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,255,255);
+  doc.text('SISTEMA DE CARREIRA  ·  MÓDULO 1  ·  DIAGNÓSTICO DE ÂNCORAS',M,16);
+  // Ícone âncora grande
+  doc.setFont('helvetica','bold');doc.setFontSize(28);doc.setTextColor(255,255,255);
+  doc.text(aw.icon||'🎯',W-M-10,36,{align:'right'});
 
-  // Candidato
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(90,88,82);doc.text('PROFISSIONAL',M,116);
-  doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(245,243,238);doc.text(nome,M,125);
-  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(110,108,102);
-  doc.text([cargo,empresa,email].filter(Boolean).join('  ·  '),M,132);
+  // Título principal
+  doc.setFont('helvetica','bold');doc.setFontSize(36);doc.setTextColor(10,10,15);
+  doc.text('ÂNCORAS',M,80);
+  doc.setFontSize(36);doc.text('DE CARREIRA',M,96);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(130,130,130);
+  doc.text('Diagnóstico baseado na metodologia de Edgar Schein',M,108);
 
-  // Metadados
-  const metas=[[tempo||'—',nivel||'—',dataHoje,'40']];
-  const metaLabels=['TEMPO CARREIRA','NÍVEL HIERÁRQUICO','DATA DO TESTE','QUESTÕES'];
-  metaLabels.forEach((label,i)=>{
-    const bx=M+(i%2)*88,by=148+Math.floor(i/2)*22;
-    doc.setFillColor(20,20,28);doc.roundedRect(bx,by-5,80,16,2,2,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(90,88,82);doc.text(label,bx+5,by+1);
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(201,168,76);doc.text(metas[0][i]||'—',bx+5,by+8);
+  // Linha separadora
+  doc.setDrawColor(235,233,230);doc.setLineWidth(0.5);doc.line(M,116,W-M,116);
+
+  // Bloco candidato
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(160,158,155);doc.text('PROFISSIONAL',M,126);
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(10,10,15);doc.text(nome,M,137);
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(100,98,95);
+  const infoLine=[cargo,empresa,email].filter(Boolean).join('  ·  ');
+  doc.text(infoLine,M,146);
+
+  // Cards de metadados
+  const metasArr=[[tempo||'—','TEMPO DE CARREIRA'],[nivel||'—','NÍVEL HIERÁRQUICO'],[dataHoje,'DATA DO DIAGNÓSTICO'],['40 questões','INSTRUMENTO']];
+  metasArr.forEach(([val,lbl],i)=>{
+    const col=i%2,row=Math.floor(i/2);
+    const bx=M+col*90,by=160+row*26;
+    doc.setFillColor(248,248,248);doc.roundedRect(bx,by,82,20,2,2,'F');
+    doc.setDrawColor(235,233,230);doc.setLineWidth(0.3);doc.roundedRect(bx,by,82,20,2,2,'S');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(150,148,145);doc.text(lbl,bx+5,by+7);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,10,15);doc.text(val,bx+5,by+15);
   });
 
-  // Âncora destaque
-  doc.setFillColor(20,20,28);doc.roundedRect(M,205,W-M*2,52,4,4,'F');
-  doc.setFillColor(...acolor);doc.roundedRect(M,205,4,52,2,2,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(90,88,82);doc.text('ÂNCORA IDENTIFICADA',M+10,215);
-  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(245,243,238);doc.text(aw.name,M+10,227);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(110,108,102);
-  doc.text(`${scores[winner]} / ${maxPossible} pontos`,M+10,236);
-  doc.setFont('helvetica','bold');doc.setFontSize(30);doc.setTextColor(...acolor);
-  doc.text(`${Math.round(scores[winner]/maxPossible*100)}%`,W-M-5,232,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,88,82);doc.text('de aderência',W-M-5,240,{align:'right'});
+  // Card âncora principal — destaque
+  const cardY=222;
+  doc.setFillColor(ar,ag,ab);doc.roundedRect(M,cardY,W-M*2,52,4,4,'F');
+  // Overlay sutil
+  doc.setFillColor(0,0,0);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,255,255);
+  doc.text('ÂNCORA PRINCIPAL IDENTIFICADA',M+10,cardY+11);
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(255,255,255);
+  doc.text(aw.name,M+10,cardY+26);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(255,255,255);
+  doc.text(`Pontuação: ${scores[winner]} / ${maxPossible} pts`,M+10,cardY+37);
+  doc.setFont('helvetica','bold');doc.setFontSize(32);doc.setTextColor(255,255,255);
+  doc.text(`${Math.round(scores[winner]/maxPossible*100)}%`,W-M-6,cardY+34,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(255,255,255);
+  doc.text('de aderência',W-M-6,cardY+43,{align:'right'});
 
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(55,53,50);
-  doc.text('Confidencial · Sistema de Carreira',M,H-10);
-  doc.text(dataHoje,W-M,H-10,{align:'right'});
+  rodape(pageNum++);
 
-  // ── P2: RESULTADOS + DESCRITIVO ──
+  // ── P2: RESULTADOS GERAIS ─────────────────────────────────────────────────
   doc.addPage();
-  doc.setFillColor(245,243,238);doc.rect(0,0,W,H,'F');
-  doc.setFillColor(201,168,76);doc.rect(0,0,4,H,'F');
-
-  y=22;
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(140,138,132);doc.text('RESULTADOS DETALHADOS',M,y);y+=10;
-  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(10,10,15);doc.text('Pontuação por Âncora',M,y);y+=14;
+  y=cabecalho('RESULTADOS DETALHADOS','Pontuação por Âncora');
 
   sorted.forEach(([key,score],idx)=>{
     const a=ANCHORS[key],pct=score/maxPossible;
-    const barMax=W-M*2-46;
+    const barMax=W-M*2-52;
     const [r,g,b]=hexToRgb(a.color);
-    if(idx%2===0){doc.setFillColor(238,236,232);doc.roundedRect(M,y-3,W-M*2,20,2,2,'F');}
-    doc.setFillColor(r,g,b);doc.circle(M+4,y+7,2.5,'F');
-    doc.setFont('helvetica',idx===0?'bold':'normal');doc.setFontSize(9);doc.setTextColor(10,10,15);
-    doc.text(`${a.name}`,M+10,y+9);
-    doc.setFillColor(215,213,208);doc.roundedRect(M+82,y+3,barMax,7,2,2,'F');
-    if(barMax*pct>0){doc.setFillColor(r,g,b);doc.roundedRect(M+82,y+3,barMax*pct,7,2,2,'F');}
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(idx===0?r:80,idx===0?g:78,idx===0?b:75);
-    doc.text(`${score}`,W-M,y+10,{align:'right'});
-    if(idx===0){doc.setFontSize(7);doc.setTextColor(...acolor);doc.text('★ PRINCIPAL',W-M-24,y+3);}
-    y+=22;
+    const rowH=22;
+    const bgClr=idx===0?[r,g,b]:idx%2===0?[249,249,249]:[255,255,255];
+    doc.setFillColor(...bgClr);doc.roundedRect(M,y-2,W-M*2,rowH-2,2,2,'F');
+    if(idx===0){
+      doc.setDrawColor(r,g,b);doc.setLineWidth(0.5);doc.roundedRect(M,y-2,W-M*2,rowH-2,2,2,'S');
+    }
+    // Dot cor
+    doc.setFillColor(r,g,b);doc.circle(M+6,y+8,3,'F');
+    // Nome
+    doc.setFont('helvetica',idx===0?'bold':'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(idx===0?255:10,idx===0?255:10,idx===0?255:15);
+    doc.text(a.name,M+13,y+10);
+    // Barra de progresso
+    const bx=M+82,bw=barMax,bh=6,by2=y+5;
+    doc.setFillColor(idx===0?[255,255,255,0.25]?220:230:230,idx===0?220:230,idx===0?220:230);
+    doc.roundedRect(bx,by2,bw,bh,2,2,'F');
+    if(pct>0){doc.setFillColor(r,g,b);doc.roundedRect(bx,by2,bw*pct,bh,2,2,'F');}
+    // Score
+    doc.setFont('helvetica','bold');doc.setFontSize(11);
+    doc.setTextColor(idx===0?255:r,idx===0?255:g,idx===0?255:b);
+    doc.text(`${score}`,W-M-2,y+11,{align:'right'});
+    // Badge principal
+    if(idx===0){
+      doc.setFillColor(255,255,255);doc.roundedRect(W-M-35,y+13,30,7,2,2,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(6);doc.setTextColor(r,g,b);
+      doc.text('★ PRINCIPAL',W-M-20,y+18,{align:'center'});
+    }
+    y+=rowH;
   });
 
+  y+=10;
   // Descritivo âncora principal
-  y+=6;
-  doc.setFillColor(10,10,15);doc.roundedRect(M,y,W-M*2,8,2,2,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(201,168,76);doc.text('PERFIL E MOTIVAÇÃO — '+aw.name.toUpperCase(),M+6,y+5.5);
+  doc.setFillColor(ar,ag,ab);doc.roundedRect(M,y,W-M*2,8,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+  doc.text('PERFIL E MOTIVAÇÃO  —  '+aw.name.toUpperCase(),M+6,y+5.5);
   y+=13;
-
-  const descLines=doc.splitTextToSize(aw.descricao,W-M*2-4);
+  const descL=doc.splitTextToSize(aw.descricao,W-M*2-4);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(35,33,30);
-  doc.text(descLines,M+2,y);y+=descLines.length*4.5+8;
+  doc.text(descL,M+2,y);y+=descL.length*4.8+8;
 
   // Motivadores
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...acolor);doc.text('MOTIVADORES-CHAVE',M,y);y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(ar,ag,ab);doc.text('MOTIVADORES-CHAVE',M,y);y+=6;
   aw.motivadores.forEach(m=>{
+    doc.setFillColor(248,248,248);doc.roundedRect(M,y-3,W-M*2,8,1.5,1.5,'F');
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(40,38,35);
-    doc.text(`• ${m}`,M+3,y);y+=5;
+    doc.text(`▸  ${m}`,M+4,y+2);y+=10;
   });
 
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(140,138,132);
-  doc.text(`${nome}  ·  Âncoras de Carreira`,M,H-10);doc.text('2',W-M,H-10,{align:'right'});
+  rodape(pageNum++);
 
-  // ── P3: CARGOS + ÁREAS + GABARITO ──
+  // ── P3: CARGOS, ÁREAS E GABARITO ─────────────────────────────────────────
   doc.addPage();
-  doc.setFillColor(245,243,238);doc.rect(0,0,W,H,'F');
-  doc.setFillColor(201,168,76);doc.rect(0,0,4,H,'F');
+  y=cabecalho('SUGESTÕES DE CARREIRA','Cargos e Áreas para '+aw.name);
 
-  y=22;
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(140,138,132);doc.text('SUGESTÕES DE CARREIRA',M,y);y+=10;
-  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(10,10,15);doc.text('Cargos e Áreas Recomendados',M,y);y+=14;
-
-  // Cargos
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...acolor);doc.text('CARGOS SUGERIDOS',M,y);y+=6;
-  const cargosCols=Math.ceil(aw.cargos.length/2);
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(ar,ag,ab);doc.text('CARGOS SUGERIDOS',M,y);y+=5;
+  const nCargosCols=Math.ceil(aw.cargos.length/2);
   aw.cargos.forEach((c,i)=>{
     const col=i%2,row=Math.floor(i/2);
-    const bx=M+col*88,by=y+row*12;
-    doc.setFillColor(240,238,233);doc.roundedRect(bx,by-4,80,9,1.5,1.5,'F');
-    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(10,10,15);doc.text(c,bx+5,by+1.5);
+    const bx=M+col*90,by=y+row*13;
+    doc.setFillColor(ar,ag,ab,0.08);
+    doc.setFillColor(Math.min(255,ar+200),Math.min(255,ag+200),Math.min(255,ab+200));
+    doc.roundedRect(bx,by-3.5,83,10,2,2,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(10,10,15);doc.text(c,bx+5,by+3);
   });
-  y+=cargosCols*12+8;
+  y+=nCargosCols*13+10;
 
-  // Áreas
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...acolor);doc.text('ÁREAS IDEAIS',M,y);y+=6;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(ar,ag,ab);doc.text('ÁREAS IDEAIS',M,y);y+=5;
   aw.areas.forEach((a2,i)=>{
-    const bx=M+(i%2)*88,by=y+Math.floor(i/2)*12;
-    doc.setFillColor(hexToRgb(aw.color)[0],hexToRgb(aw.color)[1],hexToRgb(aw.color)[2],0.1);
-    doc.setFillColor(245,240,230);doc.roundedRect(bx,by-4,80,9,1.5,1.5,'F');
-    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(10,10,15);doc.text(a2,bx+5,by+1.5);
+    const col=i%2,row=Math.floor(i/2);
+    const bx=M+col*90,by=y+row*13;
+    doc.setFillColor(248,246,240);doc.roundedRect(bx,by-3.5,83,10,2,2,'F');
+    doc.setDrawColor(ar,ag,ab);doc.setLineWidth(0.4);doc.line(bx,by-3.5,bx+2,by+6.5);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(10,10,15);doc.text(a2,bx+6,by+3);
   });
-  y+=Math.ceil(aw.areas.length/2)*12+12;
+  y+=Math.ceil(aw.areas.length/2)*13+12;
 
   // Gabarito
-  doc.setFillColor(10,10,15);doc.roundedRect(M,y,W-M*2,7,2,2,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(201,168,76);doc.text('GABARITO — SUAS 40 RESPOSTAS',M+6,y+5);
-  y+=11;
-
-  const cols=5,colW=(W-M*2)/cols;
+  doc.setFillColor(10,10,15);doc.roundedRect(M,y,W-M*2,8,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(201,168,76);doc.text('GABARITO — SUAS 40 RESPOSTAS',M+6,y+5.5);
+  y+=12;
+  const cols5=5,colW5=(W-M*2)/cols5;
   QUESTIONS.forEach((q,i)=>{
-    const col=i%cols,row=Math.floor(i/cols);
-    const bx=M+col*colW,by=y+row*16;
+    const col=i%cols5,row=Math.floor(i/cols5);
+    const bx=M+col*colW5,by=y+row*16;
     const val=document.querySelector(`input[name="q${q.id}"]:checked`);
     const v=val?parseInt(val.value):0;
-    doc.setFillColor(228,226,220);doc.roundedRect(bx,by,colW-2,12,1.5,1.5,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(120,118,112);doc.text(`Q${q.id}`,bx+3,by+5);
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(10,10,15);doc.text(`${v}`,bx+colW/2,by+9.5,{align:'center'});
+    const isHigh=v>=5,isMid=v>=3;
+    doc.setFillColor(isHigh?[ar,ag,ab][0]:isMid?245:242,isHigh?[ar,ag,ab][1]:isMid?242:240,isHigh?[ar,ag,ab][2]:isMid?235:238);
+    doc.roundedRect(bx,by,colW5-2,13,1.5,1.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6);doc.setTextColor(isHigh?255:120,isHigh?255:118,isHigh?255:112);doc.text(`Q${q.id}`,bx+3,by+5.5);
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(isHigh?255:10,isHigh?255:10,isHigh?255:15);doc.text(`${v}`,bx+colW5/2,by+11,{align:'center'});
   });
 
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(140,138,132);
-  doc.text(`${nome}  ·  Âncoras de Carreira`,M,H-10);doc.text('3',W-M,H-10,{align:'right'});
+  rodape(pageNum++);
+
+  // ── P4+: RESUMO DE TODAS AS ÂNCORAS ──────────────────────────────────────
+  // 2 âncoras por página (4 páginas para 8 âncoras)
+  const anchorPairs=[];
+  for(let i=0;i<ANCHOR_ORDER.length;i+=2) anchorPairs.push([ANCHOR_ORDER[i],ANCHOR_ORDER[i+1]]);
+
+  anchorPairs.forEach(pair=>{
+    doc.addPage();
+    doc.setFillColor(255,255,255);doc.rect(0,0,W,H,'F');
+    doc.setFillColor(10,10,15);doc.rect(0,0,W,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(160,158,155);
+    doc.text('GUIA DE REFERÊNCIA — AS 8 ÂNCORAS DE CARREIRA',M,13);
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(10,10,15);
+    doc.text('Resumo Completo das Âncoras',M,23);
+    doc.setDrawColor(235,235,235);doc.setLineWidth(0.4);doc.line(M,27,W-M,27);
+
+    let ay=34;
+    pair.filter(Boolean).forEach(key=>{
+      const a=ANCHORS[key];
+      const [r,g,b]=hexToRgb(a.color);
+      const sc=scores[key];
+      const pct=Math.round(sc/maxPossible*100);
+      const isWinner=key===winner;
+      const blockH=106;
+
+      // Card border se for a âncora principal
+      if(isWinner){
+        doc.setDrawColor(r,g,b);doc.setLineWidth(1);doc.roundedRect(M-1,ay-1,W-M*2+2,blockH+2,4,4,'S');
+      }
+
+      // Cabeçalho da âncora
+      doc.setFillColor(r,g,b);doc.roundedRect(M,ay,W-M*2,16,3,3,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
+      doc.text(`${a.icon}  ${a.name}`,M+6,ay+10.5);
+      // Score badge
+      doc.setFillColor(255,255,255);doc.roundedRect(W-M-32,ay+3,28,10,3,3,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(r,g,b);
+      doc.text(`${sc} pts  ${pct}%`,W-M-18,ay+10,{align:'center'});
+      if(isWinner){
+        doc.setFillColor(255,255,255);doc.roundedRect(W-M-68,ay+3,34,10,3,3,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(r,g,b);
+        doc.text('★ SUA ÂNCORA',W-M-51,ay+10,{align:'center'});
+      }
+      ay+=20;
+
+      // Barra de pontuação
+      const barW2=W-M*2-4;
+      doc.setFillColor(235,235,235);doc.roundedRect(M+2,ay,barW2,5,2,2,'F');
+      doc.setFillColor(r,g,b);doc.roundedRect(M+2,ay,barW2*(sc/maxPossible),5,2,2,'F');
+      ay+=9;
+
+      // Descritivo (máx 2 linhas)
+      const shortDesc=doc.splitTextToSize(a.descricao,W-M*2-4);
+      const descShow=shortDesc.slice(0,3);
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(50,48,45);
+      doc.text(descShow,M+2,ay);
+      ay+=descShow.length*4+5;
+
+      // Cargos (em linha)
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(r,g,b);doc.text('CARGOS:',M+2,ay);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(50,48,45);
+      const cargosStr=a.cargos.slice(0,6).join('  ·  ');
+      doc.text(cargosStr,M+20,ay);ay+=6;
+
+      // Áreas (em linha)
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(r,g,b);doc.text('ÁREAS:',M+2,ay);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(50,48,45);
+      doc.text(a.areas.join('  ·  '),M+20,ay);ay+=6;
+
+      // Motivadores chave (em linha)
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(r,g,b);doc.text('MOTIVADORES:',M+2,ay);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(50,48,45);
+      const motStr=a.motivadores.slice(0,3).join('  ·  ');
+      const motLines=doc.splitTextToSize(motStr,W-M*2-24);
+      doc.text(motLines[0]||'',M+32,ay);ay+=10;
+
+      // Separador entre as 2 âncoras da página
+      if(pair[1]&&key===pair[0]){
+        doc.setDrawColor(240,238,235);doc.setLineWidth(0.4);doc.line(M,ay,W-M,ay);ay+=6;
+      }
+    });
+
+    rodape(pageNum++);
+  });
 
   const safeName=(G.nome||'respondente').replace(/[^a-z0-9]/gi,'_');
   doc.save(`Ancoras_Carreira_${safeName}.pdf`);
   showToast('✓ PDF gerado com sucesso!');
-}
-
-// ─── XLSX HISTÓRICO ───────────────────────────────────────────────────────────
-const HISTORY_KEY='ancoras_carreira_historico';
-
-function getHistory(){
-  try{return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');}
-  catch{return[];}
-}
-
-function saveHistory(record){
-  const hist=getHistory();
-  hist.unshift(record);
-  try{localStorage.setItem(HISTORY_KEY,JSON.stringify(hist));}
-  catch(e){console.warn('localStorage cheio',e);}
-}
-
-function salvarHistoricoXLSX(){
-  const {scores,sorted,winner,nome,email,cargo,empresa,tempo,nivel}=G;
-  const dataHoje=new Date().toLocaleString('pt-BR');
-
-  // Salvar no localStorage
-  const record={
-    dataHora:dataHoje,nome,email,cargo,empresa,tempo,nivel,
-    ancoraPrincipal:ANCHORS[winner].name,
-    pontosPrincipal:scores[winner],
-    segunda:ANCHORS[sorted[1][0]].name,
-    pontosSegunda:sorted[1][1],
-    TF:scores.TF,GG:scores.GG,AI:scores.AI,SE:scores.SE,
-    CE:scores.CE,SD:scores.SD,PD:scores.PD,EV:scores.EV
-  };
-  saveHistory(record);
-
-  // Gerar XLSX com todos os históricos
-  const hist=getHistory();
-  const wsData=[
-    ['HISTÓRICO DE RESULTADOS — TESTE DE ÂNCORAS DE CARREIRA'],
-    [`Exportado em: ${new Date().toLocaleString('pt-BR')}`],
-    [],
-    ['Data/Hora','Nome','E-mail','Cargo','Empresa','Tempo Carreira','Nível Hierárquico',
-     'Âncora Principal','Pontos (Principal)','2ª Âncora','Pontos (2ª)',
-     'TF','GG','AI','SE','CE','SD','PD','EV']
-  ];
-
-  hist.forEach(r=>{
-    wsData.push([
-      r.dataHora,r.nome,r.email,r.cargo,r.empresa,r.tempo,r.nivel,
-      r.ancoraPrincipal,r.pontosPrincipal,r.segunda,r.pontosSegunda,
-      r.TF,r.GG,r.AI,r.SE,r.CE,r.SD,r.PD,r.EV
-    ]);
-  });
-
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(wsData);
-
-  // Larguras das colunas
-  ws['!cols']=[
-    {wch:18},{wch:24},{wch:28},{wch:22},{wch:20},{wch:16},{wch:18},
-    {wch:26},{wch:10},{wch:22},{wch:10},
-    {wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6}
-  ];
-
-  // Congelar cabeçalho
-  ws['!freeze']={xSplit:0,ySplit:4,topLeftCell:'A5'};
-
-  XLSX.utils.book_append_sheet(wb,ws,'Histórico');
-
-  // Aba referência âncoras
-  const refData=[
-    ['REFERÊNCIA — AS 8 ÂNCORAS DE CARREIRA'],
-    [],
-    ['Cód.','Âncora','Perfil / Motivação Central','Cargos Sugeridos','Áreas Ideais']
-  ];
-  ANCHOR_ORDER.forEach(k=>{
-    const a=ANCHORS[k];
-    refData.push([k,a.name,a.descricao,a.cargos.join(', '),a.areas.join(', ')]);
-  });
-  const wsRef=XLSX.utils.aoa_to_sheet(refData);
-  wsRef['!cols']=[{wch:6},{wch:26},{wch:60},{wch:60},{wch:45}];
-  XLSX.utils.book_append_sheet(wb,wsRef,'Âncoras – Referência');
-
-  XLSX.writeFile(wb,`Historico_Ancoras_Carreira_${new Date().toISOString().slice(0,10)}.xlsx`);
-  showToast(`✓ Planilha gerada! ${hist.length} respondente(s) no histórico.`);
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
