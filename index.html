@@ -159,8 +159,14 @@ h1 span{color:var(--gold)}
 .btn-pdf{flex:1;padding:14px 22px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
 .btn-pdf:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(200,64,30,.35)}
 
+.btn-drive{flex:1;padding:14px 22px;background:#1a73e8;color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
+.btn-drive:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,115,232,.4)}
+.btn-drive:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .btn-retry{padding:14px 22px;background:transparent;color:var(--ink);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:border-color .15s}
 .btn-retry:hover{border-color:var(--ink)}
+.drive-status{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--muted);text-align:center;min-height:16px;margin-top:8px;transition:color .2s}
+.drive-status.ok{color:#2d8a4e}
+.drive-status.err{color:var(--accent)}
 
 /* TOAST */
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:var(--paper);padding:12px 24px;border-radius:30px;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;opacity:0;z-index:9999;white-space:nowrap;border-left:4px solid var(--gold)}
@@ -327,7 +333,10 @@ h1 span{color:var(--gold)}
 
       <div class="modal-actions">
         <button class="btn-pdf" onclick="gerarPDF()">⬇ Baixar PDF</button>
+        <button class="btn-drive" id="btn-drive" onclick="salvarNoDrive()">☁ Salvar no Drive</button>
         <button class="btn-retry" onclick="reiniciar()">Refazer</button>
+      </div>
+      <div class="drive-status" id="drive-status"></div>
       </div>
     </div>
   </div>
@@ -1002,6 +1011,280 @@ function reiniciar(){
   document.getElementById('all-anchors-detail').innerHTML='';
   updateProgress();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+
+// ─── GOOGLE DRIVE INTEGRATION ─────────────────────────────────────────────────
+const DRIVE_CLIENT_ID='250168021925-6u14e92j9qr71irgvfa3nl6i0urlcrj8.apps.googleusercontent.com';
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
+const DRIVE_FOLDER_NAME='Sistema de Carreira — PDFs';
+let driveToken=null;
+
+function driveStatus(msg,cls=''){
+  const el=document.getElementById('drive-status');
+  el.textContent=msg;el.className='drive-status'+(cls?' '+cls:'');
+}
+
+// Iniciar fluxo OAuth popup
+function salvarNoDrive(){
+  driveStatus('Conectando ao Google Drive...');
+  document.getElementById('btn-drive').disabled=true;
+
+  // Abre popup OAuth
+  const params=new URLSearchParams({
+    client_id:DRIVE_CLIENT_ID,
+    redirect_uri:location.origin+location.pathname,
+    response_type:'token',
+    scope:DRIVE_SCOPE,
+    prompt:'consent'
+  });
+  const popup=window.open(
+    'https://accounts.google.com/o/oauth2/v2/auth?'+params,
+    'oauth','width=500,height=620,left=300,top=100'
+  );
+
+  // Escuta o retorno do popup via postMessage (fragment redirect)
+  window.addEventListener('message',function handler(e){
+    if(e.data&&e.data.type==='drive_token'){
+      driveToken=e.data.token;
+      window.removeEventListener('message',handler);
+      uploadPDFtoDrive();
+    }
+  });
+
+  // Fallback: detecta quando popup fecha sem token (usuário cancelou)
+  const check=setInterval(()=>{
+    if(popup&&popup.closed){
+      clearInterval(check);
+      if(!driveToken){
+        driveStatus('Login cancelado.','err');
+        document.getElementById('btn-drive').disabled=false;
+      }
+    }
+  },800);
+}
+
+// Se esta página for o redirect do OAuth (fragment com access_token)
+(function checkOAuthRedirect(){
+  const hash=location.hash;
+  if(hash&&hash.includes('access_token')){
+    const params=new URLSearchParams(hash.slice(1));
+    const token=params.get('access_token');
+    if(token&&window.opener){
+      window.opener.postMessage({type:'drive_token',token},'*');
+      window.close();
+    }
+  }
+})();
+
+async function uploadPDFtoDrive(){
+  driveStatus('Gerando PDF...');
+  try{
+    // Gerar PDF como blob
+    const pdfBlob=await gerarPDFBlob();
+
+    driveStatus('Procurando pasta no Drive...');
+    // Buscar ou criar pasta
+    const folderId=await encontrarOuCriarPasta(DRIVE_FOLDER_NAME);
+
+    driveStatus('Enviando para o Drive...');
+    // Fazer upload
+    const safeName=(G.nome||'respondente').replace(/[^a-z0-9]/gi,'_');
+    const fileName=`Ancoras_Carreira_${safeName}_${new Date().toISOString().slice(0,10)}.pdf`;
+    const fileId=await uploadArquivo(pdfBlob,fileName,folderId);
+
+    driveStatus(`✓ Salvo no Drive: ${fileName}`,'ok');
+    showToast('✓ PDF salvo no Google Drive!');
+    document.getElementById('btn-drive').disabled=false;
+    document.getElementById('btn-drive').textContent='✓ Salvo no Drive';
+  }catch(e){
+    console.error(e);
+    driveStatus('Erro ao salvar no Drive: '+e.message,'err');
+    document.getElementById('btn-drive').disabled=false;
+    showToast('✗ Falha ao salvar no Drive');
+  }
+}
+
+// Gera o PDF e retorna como Blob (sem baixar)
+async function gerarPDFBlob(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const {scores,sorted,winner,maxPossible,nome,email,cargo,empresa,tempo,nivel}=G;
+  const aw=ANCHORS[winner];
+  const dataHoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const W=210,H=297,M=18,CW=W-M*2;
+  let pg=1;
+  const SIGLA={TF:'TF',GG:'GG',AI:'AI',SE:'SE',CE:'CE',SD:'SD',PD:'PD',EV:'EV'};
+  function rgb(hex){return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];}
+  const [ar,ag,ab]=rgb(aw.color);
+  function fnt(st,sz,r,g,b){doc.setFont('helvetica',st);doc.setFontSize(sz);doc.setTextColor(r??10,g??10,b??15);}
+  function fil(r,g,b){doc.setFillColor(r,g,b);}
+  function str2(r,g,b,w){doc.setDrawColor(r,g,b);doc.setLineWidth(w||0.3);}
+  function t(s,x,y,o){doc.text(String(s),x,y,o||{});}
+  function rodape(){
+    fil(246,246,246);doc.rect(0,H-14,W,14,'F');
+    str2(225,225,225);doc.line(0,H-14,W,H-14);
+    fnt('normal',7,150,150,150);t('Sistema de Carreira  |  Ancoras de Carreira  |  Metodologia Edgar Schein',M,H-5);
+    fnt('bold',7,100,100,100);t(nome,W/2,H-5,{align:'center'});
+    fnt('normal',7,150,150,150);t('Pag. '+pg,W-M,H-5,{align:'right'});pg++;
+  }
+  function novaPag(sup,tit){
+    doc.addPage();fil(255,255,255);doc.rect(0,0,W,H,'F');
+    fil(ar,ag,ab);doc.rect(0,0,W,3,'F');
+    fnt('bold',7,ar,ag,ab);t(sup,M,12);
+    fnt('bold',18,10,10,15);t(tit,M,23);
+    str2(230,230,230);doc.line(M,27,W-M,27);return 34;
+  }
+  // P1 CAPA
+  fil(255,255,255);doc.rect(0,0,W,H,'F');
+  fil(ar,ag,ab);doc.rect(0,0,W,60,'F');
+  str2(255,255,255,0.2);doc.circle(W-20,30,28);doc.circle(W-10,50,18);
+  fnt('bold',36,255,255,255);t('['+SIGLA[winner]+']',W-M,46,{align:'right'});
+  fnt('bold',7.5,255,255,255);t('SISTEMA DE CARREIRA  |  MODULO 1  |  DIAGNOSTICO',M,15);
+  fnt('bold',38,15,15,20);t('ANCORAS',M,80);t('DE CARREIRA',M,96);
+  fnt('normal',10,130,130,130);t('Diagnostico baseado na metodologia de Edgar Schein',M,107);
+  str2(230,228,225,0.5);doc.line(M,114,W-M,114);
+  fnt('bold',7,155,153,150);t('PROFISSIONAL',M,124);
+  fnt('bold',19,10,10,15);t(nome,M,135);
+  fnt('normal',9.5,100,98,95);
+  t([cargo,empresa,email].filter(Boolean).join('  |  '),M,144);
+  [[tempo||'—','TEMPO DE CARREIRA'],[nivel||'—','NIVEL HIERARQUICO'],[dataHoje,'DATA DO DIAGNOSTICO'],['40 questoes','INSTRUMENTO']].forEach(([v,l],i)=>{
+    const cx=M+(i%2)*91,cy=158+Math.floor(i/2)*28;
+    fil(248,248,248);doc.roundedRect(cx,cy,84,22,2,2,'F');
+    str2(230,228,225,0.3);doc.roundedRect(cx,cy,84,22,2,2,'S');
+    fnt('bold',6.5,150,148,145);t(l,cx+5,cy+8);fnt('bold',9.5,10,10,15);t(v,cx+5,cy+17);
+  });
+  fil(ar,ag,ab);doc.roundedRect(M,222,CW,55,4,4,'F');
+  fnt('bold',7.5,255,255,255);t('ANCORA PRINCIPAL IDENTIFICADA',M+10,233);
+  fnt('bold',22,255,255,255);t(aw.name,M+10,247);
+  fnt('normal',9,255,255,255);t('Pontuacao: '+scores[winner]+' / '+maxPossible+' pts',M+10,257);
+  fnt('bold',34,255,255,255);t(Math.round(scores[winner]/maxPossible*100)+'%',W-M-6,253,{align:'right'});
+  fnt('normal',7.5,255,255,255);t('de aderencia',W-M-6,261,{align:'right'});
+  rodape();
+  // P2 BARRAS
+  let y=novaPag('RESULTADOS DETALHADOS','Pontuacao por Ancora');
+  fnt('normal',7.5,130,130,130);t('Escala: 0 a 30 pontos por ancora (5 questoes x nota max. 6)',M,y);y+=6;
+  const ROW=23,NOME_W=62,BAR_X=M+NOME_W+6,BAR_W=CW-NOME_W-22;
+  sorted.forEach(([key,score],idx)=>{
+    const a=ANCHORS[key],pct=score/maxPossible,isW=idx===0;
+    const [r,g,b]=rgb(a.color);
+    if(isW){fil(r,g,b);}else{fil(idx%2===0?250:255,idx%2===0?250:255,idx%2===0?250:255);}
+    doc.roundedRect(M,y,CW,ROW-2,2,2,'F');
+    if(isW){str2(r,g,b,0.8);doc.roundedRect(M,y,CW,ROW-2,2,2,'S');}
+    fil(isW?255:r,isW?255:g,isW?255:b);doc.roundedRect(M+3,y+3,10,ROW-8,1.5,1.5,'F');
+    fnt('bold',7,isW?r:255,isW?g:255,isW?b:255);t(key,M+8,y+ROW-9,{align:'center'});
+    fnt(isW?'bold':'normal',9,isW?255:20,isW?255:20,isW?255:25);t(a.name,M+16,y+ROW-7);
+    fil(isW?200:230,isW?200:230,isW?200:230);doc.roundedRect(BAR_X,y+5,BAR_W,7,2,2,'F');
+    if(pct>0){fil(isW?255:r,isW?255:g,isW?255:b);doc.roundedRect(BAR_X,y+5,Math.max(BAR_W*pct,3),7,2,2,'F');}
+    fnt('bold',11,isW?255:r,isW?255:g,isW?255:b);t(score,W-M,y+ROW-6,{align:'right'});
+    y+=ROW;
+  });
+  y+=8;
+  fil(ar,ag,ab);doc.roundedRect(M,y,CW,7,2,2,'F');
+  fnt('bold',8,255,255,255);t('PERFIL E MOTIVACAO  —  '+aw.name.toUpperCase(),M+5,y+5);y+=12;
+  const dL=doc.splitTextToSize(aw.descricao,CW-4);
+  fnt('normal',8.5,35,33,30);doc.text(dL,M+2,y);y+=dL.length*4.5+6;
+  fnt('bold',8,ar,ag,ab);t('MOTIVADORES-CHAVE',M,y);y+=5;
+  aw.motivadores.forEach(m=>{
+    fil(248,248,248);doc.roundedRect(M,y-3,CW,8,1.5,1.5,'F');
+    fnt('normal',8.5,40,38,35);t('>  '+m,M+4,y+2);y+=10;
+  });
+  rodape();
+  // P3 CARGOS E AREAS
+  y=novaPag('SUGESTOES DE CARREIRA','Cargos e Areas — '+aw.name);
+  fnt('bold',8,ar,ag,ab);t('CARGOS SUGERIDOS',M,y);y+=5;
+  const CW2=84,GAP=6;
+  aw.cargos.forEach((c,i)=>{
+    const cx=M+(i%2)*(CW2+GAP),cy3=y+Math.floor(i/2)*14;
+    fil(Math.min(255,ar+195),Math.min(255,ag+195),Math.min(255,ab+195));
+    doc.roundedRect(cx,cy3-3.5,CW2,11,2,2,'F');
+    str2(ar,ag,ab,0.3);doc.roundedRect(cx,cy3-3.5,CW2,11,2,2,'S');
+    fnt('normal',8.5,10,10,15);t(doc.splitTextToSize(c,CW2-8)[0],cx+4,cy3+3.5);
+  });
+  y+=Math.ceil(aw.cargos.length/2)*14+10;
+  fnt('bold',8,ar,ag,ab);t('AREAS IDEAIS',M,y);y+=5;
+  aw.areas.forEach((a2,i)=>{
+    const cx=M+(i%2)*(CW2+GAP),cy3=y+Math.floor(i/2)*14;
+    fil(248,246,242);doc.roundedRect(cx,cy3-3.5,CW2,11,2,2,'F');
+    fil(ar,ag,ab);doc.roundedRect(cx,cy3-3.5,3,11,1,1,'F');
+    fnt('normal',8.5,10,10,15);t(doc.splitTextToSize(a2,CW2-10)[0],cx+7,cy3+3.5);
+  });
+  y+=Math.ceil(aw.areas.length/2)*14+14;
+  fil(248,248,248);doc.roundedRect(M,y,CW,32,3,3,'F');
+  str2(ar,ag,ab,0.5);doc.roundedRect(M,y,CW,32,3,3,'S');
+  fnt('bold',8,ar,ag,ab);t('DICA DE ALINHAMENTO DE CARREIRA',M+6,y+8);
+  const dica='Profissionais com ancora '+aw.name+' se realizam plenamente quando o ambiente respeita seus motivadores centrais. Avalie se a cultura, o modelo de gestao e o escopo do cargo estao alinhados ao seu perfil antes de aceitar.';
+  fnt('normal',8,50,48,45);doc.text(doc.splitTextToSize(dica,CW-12),M+6,y+16);
+  rodape();
+  // P4-7 RESUMO
+  const pairs=[];for(let i=0;i<ANCHOR_ORDER.length;i+=2)pairs.push([ANCHOR_ORDER[i],ANCHOR_ORDER[i+1]].filter(Boolean));
+  pairs.forEach((pair,pi)=>{
+    doc.addPage();fil(255,255,255);doc.rect(0,0,W,H,'F');
+    fil(10,10,15);doc.rect(0,0,W,3,'F');
+    fnt('bold',7,150,150,150);t('GUIA DE REFERENCIA — AS 8 ANCORAS DE CARREIRA',M,12);
+    fnt('bold',17,10,10,15);t('Resumo Completo — Pag '+(pi+1)+' de '+pairs.length,M,22);
+    str2(230,230,230,0.4);doc.line(M,26,W-M,26);
+    let ay=32;
+    pair.forEach((key,ki)=>{
+      const a=ANCHORS[key],[r,g,b]=rgb(a.color),sc=scores[key],pct=Math.round(sc/maxPossible*100),isW=key===winner;
+      if(isW){str2(r,g,b,1);doc.roundedRect(M-1,ay-1,CW+2,123,3,3,'S');}
+      fil(r,g,b);doc.roundedRect(M,ay,CW,17,3,3,'F');
+      fil(255,255,255);doc.roundedRect(M+3,ay+3,13,11,2,2,'F');
+      fnt('bold',8,r,g,b);t(key,M+9.5,ay+10.5,{align:'center'});
+      fnt('bold',13,255,255,255);t(a.name,M+20,ay+11.5);
+      fil(255,255,255);doc.roundedRect(W-M-38,ay+3.5,34,10,2,2,'F');
+      fnt('bold',8.5,r,g,b);t(sc+' pts  |  '+pct+'%',W-M-21,ay+10.5,{align:'center'});
+      if(isW){fil(255,255,255);doc.roundedRect(W-M-78,ay+3.5,37,10,2,2,'F');fnt('bold',7,r,g,b);t('★ SUA ANCORA',W-M-59.5,ay+10.5,{align:'center'});}
+      ay+=21;
+      const bw3=CW-4;fil(230,230,230);doc.roundedRect(M+2,ay,bw3,6,2,2,'F');
+      fil(r,g,b);doc.roundedRect(M+2,ay,Math.max(bw3*sc/maxPossible,2),6,2,2,'F');
+      fnt('bold',7,r,g,b);t(pct+'%',M+2+bw3+2,ay+5);ay+=11;
+      const dLs=doc.splitTextToSize(a.descricao,CW-4);
+      fnt('normal',8,45,43,40);doc.text(dLs.slice(0,3),M+2,ay);ay+=dLs.slice(0,3).length*4.4+4;
+      fnt('bold',7,r,g,b);t('CARGOS:',M+2,ay);fnt('normal',7.5,50,48,45);
+      doc.text(doc.splitTextToSize(a.cargos.slice(0,7).join('  ·  '),CW-22).slice(0,2),M+22,ay);ay+=8;
+      fnt('bold',7,r,g,b);t('AREAS:',M+2,ay);fnt('normal',7.5,50,48,45);
+      doc.text(doc.splitTextToSize(a.areas.join('  ·  '),CW-20).slice(0,2),M+20,ay);ay+=8;
+      fnt('bold',7,r,g,b);t('MOTIVADORES:',M+2,ay);fnt('normal',7.5,50,48,45);
+      doc.text(doc.splitTextToSize(a.motivadores.slice(0,4).join('  ·  '),CW-30).slice(0,2),M+30,ay);ay+=8;
+      if(ki===0&&pair.length>1){str2(230,228,225,0.4);doc.line(M,ay,W-M,ay);ay+=8;}
+    });
+    rodape();
+  });
+  return doc.output('blob');
+}
+
+async function encontrarOuCriarPasta(nome){
+  // Buscar pasta existente
+  const q=encodeURIComponent(`name='${nome}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const res=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,{
+    headers:{Authorization:'Bearer '+driveToken}
+  });
+  const data=await res.json();
+  if(data.files&&data.files.length>0) return data.files[0].id;
+  // Criar pasta
+  const cr=await fetch('https://www.googleapis.com/drive/v3/files',{
+    method:'POST',
+    headers:{Authorization:'Bearer '+driveToken,'Content-Type':'application/json'},
+    body:JSON.stringify({name:nome,mimeType:'application/vnd.google-apps.folder'})
+  });
+  const folder=await cr.json();
+  return folder.id;
+}
+
+async function uploadArquivo(blob,fileName,folderId){
+  const meta={name:fileName,parents:[folderId]};
+  const form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+  form.append('file',blob,'arquivo.pdf');
+  const res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{
+    method:'POST',
+    headers:{Authorization:'Bearer '+driveToken},
+    body:form
+  });
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message);
+  return data.id;
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
