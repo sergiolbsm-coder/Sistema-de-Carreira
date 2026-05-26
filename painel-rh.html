@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel RH — Âncoras de Carreira</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+:root{
+  --ink:#0a0a0f;--paper:#ffffff;--accent:#c8401e;--accent2:#1a4db0;
+  --gold:#c9a84c;--muted:#6b6760;--border:#e4e2de;--bg:#f7f6f3;
+  --sidebar:240px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
+
+/* ── TOP BAR ── */
+.topbar{background:var(--ink);color:#fff;padding:0 28px;height:56px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:200;flex-shrink:0}
+.topbar-logo{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;letter-spacing:.04em}
+.topbar-logo span{color:var(--gold)}
+.topbar-sep{width:1px;height:20px;background:rgba(255,255,255,.15)}
+.topbar-title{font-size:12px;color:rgba(255,255,255,.5);font-family:'Syne',sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.topbar-stat{text-align:right}
+.topbar-stat-n{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--gold);line-height:1}
+.topbar-stat-l{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;min-height:0}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar);background:#fff;border-right:1px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px;flex-shrink:0;overflow-y:auto}
+.sidebar-section{padding:8px 16px 4px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.filter-btn{padding:9px 16px;border:none;background:none;text-align:left;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:10px;transition:background .15s;border-radius:0;width:100%}
+.filter-btn:hover{background:var(--bg)}
+.filter-btn.active{background:var(--ink);color:#fff;font-weight:600}
+.filter-btn .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.filter-btn .count{margin-left:auto;font-size:11px;opacity:.55;font-family:'Syne',sans-serif;font-weight:700}
+.filter-btn.active .count{opacity:.7}
+.sidebar-search{margin:8px 12px 4px;position:relative}
+.sidebar-search input{width:100%;padding:8px 12px 8px 32px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;background:var(--bg);color:var(--ink)}
+.sidebar-search input:focus{border-color:var(--accent2);background:#fff}
+.sidebar-search::before{content:'⌕';position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+
+/* ── MAIN CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:24px 28px}
+
+/* ── STATS BAR ── */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 18px}
+.stat-card-label{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stat-card-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--ink);line-height:1}
+.stat-card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ── TABLE ── */
+.table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.table-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+.table-actions{display:flex;gap:10px}
+.btn-sm{padding:8px 16px;border-radius:8px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;gap:6px}
+.btn-sm:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover{box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.btn-outline{background:#fff;color:var(--ink);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:var(--ink)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{box-shadow:0 4px 14px rgba(200,64,30,.35)}
+
+.table-wrap{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--ink);color:#fff}
+thead th{padding:11px 14px;text-align:left;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+thead th:first-child{border-radius:0}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f8f7f5}
+tbody tr.selected{background:#eff4ff}
+tbody td{padding:12px 14px;font-size:13px;vertical-align:middle}
+.td-name{font-weight:600;color:var(--ink)}
+.td-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.anchor-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700}
+.score-bar-wrap{display:flex;align-items:center;gap:8px}
+.score-bar-track{width:60px;height:5px;background:#eee;border-radius:999px;overflow:hidden;flex-shrink:0}
+.score-bar-fill{height:100%;border-radius:999px}
+.score-num{font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
+.date-txt{font-size:12px;color:var(--muted)}
+.action-cell{display:flex;gap:6px;align-items:center}
+.btn-pdf-sm{padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.btn-pdf-sm:hover{opacity:.85}
+.empty-state{padding:60px 20px;text-align:center}
+.empty-state-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+.empty-state-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.empty-state-sub{font-size:13px;color:var(--muted)}
+
+/* ── MODAL DETALHES ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,10,15,.7);backdrop-filter:blur(4px);z-index:500;padding:24px;overflow-y:auto;align-items:flex-start;justify-content:center}
+.overlay.open{display:flex}
+.detail-modal{background:#fff;border-radius:16px;width:100%;max-width:640px;overflow:hidden;animation:up .3s ease}
+@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.detail-top{padding:28px 32px 20px;background:var(--ink);position:relative}
+.detail-top h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff}
+.detail-top p{font-size:12px;color:rgba(255,255,255,.5);margin-top:4px}
+.btn-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.btn-close:hover{background:rgba(255,255,255,.2)}
+.detail-body{padding:24px 32px}
+.detail-anchor-card{background:var(--ink);border-radius:12px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.detail-anchor-sig{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#fff;flex-shrink:0}
+.detail-anchor-name{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff}
+.detail-anchor-pts{font-size:12px;color:rgba(255,255,255,.5);margin-top:3px}
+.detail-bars{display:grid;gap:8px;margin-bottom:20px}
+.dbar-row{display:grid;grid-template-columns:130px 1fr 36px;align-items:center;gap:10px}
+.dbar-name{font-size:12px;font-family:'Syne',sans-serif;font-weight:600;display:flex;align-items:center;gap:6px}
+.dbar-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dbar-track{height:6px;background:#eee;border-radius:999px;overflow:hidden}
+.dbar-fill{height:100%;border-radius:999px}
+.dbar-score{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;text-align:right}
+.detail-actions{display:flex;gap:10px}
+.detail-actions button{flex:1;padding:13px;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:transform .15s}
+.detail-actions button:hover{transform:translateY(-1px)}
+.detail-btn-pdf{background:var(--accent);color:#fff}
+.detail-btn-close{background:var(--bg);color:var(--ink)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:#fff;padding:10px 22px;border-radius:30px;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;opacity:0;transition:all .3s;z-index:9999;border-left:4px solid var(--gold);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── PASSWORD SCREEN ── */
+.pw-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:24px;padding:40px}
+.pw-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:40px 44px;max-width:380px;width:100%;text-align:center}
+.pw-card h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px}
+.pw-card p{font-size:13px;color:var(--muted);margin-bottom:24px}
+.pw-input{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;letter-spacing:.2em;text-align:center;outline:none;margin-bottom:14px;font-family:'Syne',sans-serif;font-weight:700}
+.pw-input:focus{border-color:var(--accent2)}
+.pw-btn{width:100%;padding:14px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:transform .15s}
+.pw-btn:hover{transform:translateY(-2px)}
+.pw-error{color:var(--accent);font-size:12px;font-family:'Syne',sans-serif;font-weight:600;min-height:16px}
+
+@media(max-width:768px){
+  .sidebar{display:none}
+  .stats-bar{grid-template-columns:1fr 1fr}
+  .content{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- SENHA -->
+<div id="pw-screen" class="pw-screen">
+  <div class="pw-card">
+    <div style="font-size:32px;margin-bottom:12px">🔐</div>
+    <h2>Painel RH</h2>
+    <p>Acesso restrito à equipe de Recursos Humanos.<br>Digite a senha para continuar.</p>
+    <input class="pw-input" type="password" id="pw-input" placeholder="••••••" maxlength="20" onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="pw-btn" onclick="checkPw()">Acessar Painel</button>
+    <div class="pw-error" id="pw-error"></div>
+    <div style="margin-top:20px;font-size:11px;color:var(--muted)">Sistema de Carreira · Módulo 1</div>
+  </div>
+</div>
+
+<!-- PAINEL PRINCIPAL (oculto até login) -->
+<div id="main-app" style="display:none;flex-direction:column;flex:1">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">Sistema de <span>Carreira</span></div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-title">Painel RH · Âncoras de Carreira</div>
+    <div class="topbar-right">
+      <div class="topbar-stat">
+        <div class="topbar-stat-n" id="stat-total">0</div>
+        <div class="topbar-stat-l">respondentes</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-section">Buscar</div>
+      <div class="sidebar-search">
+        <input type="text" id="search-input" placeholder="Nome ou empresa..." oninput="applyFilters()">
+      </div>
+
+      <div class="sidebar-section" style="margin-top:8px">Filtrar por Âncora</div>
+      <button class="filter-btn active" onclick="setFilter('all',this)" id="f-all">
+        <span class="dot" style="background:#aaa"></span>Todas as Âncoras
+        <span class="count" id="fc-all">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('TF',this)">
+        <span class="dot" style="background:#3b82f6"></span>Técnico Funcional
+        <span class="count" id="fc-TF">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('GG',this)">
+        <span class="dot" style="background:#8b5cf6"></span>Gerência Geral
+        <span class="count" id="fc-GG">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('AI',this)">
+        <span class="dot" style="background:#10b981"></span>Autonomia e Independência
+        <span class="count" id="fc-AI">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('SE',this)">
+        <span class="dot" style="background:#f59e0b"></span>Segurança e Estabilidade
+        <span class="count" id="fc-SE">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('CE',this)">
+        <span class="dot" style="background:#ef4444"></span>Criatividade e Empreend.
+        <span class="count" id="fc-CE">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('SD',this)">
+        <span class="dot" style="background:#ec4899"></span>Serviço e Dedicação
+        <span class="count" id="fc-SD">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('PD',this)">
+        <span class="dot" style="background:#f97316"></span>Puro Desafio
+        <span class="count" id="fc-PD">0</span>
+      </button>
+      <button class="filter-btn" onclick="setFilter('EV',this)">
+        <span class="dot" style="background:#14b8a6"></span>Estilo de Vida
+        <span class="count" id="fc-EV">0</span>
+      </button>
+
+      <div class="sidebar-section" style="margin-top:8px">Período</div>
+      <button class="filter-btn" onclick="setPeriod('all',this)" id="p-all" style="font-size:12px">Todos os períodos</button>
+      <button class="filter-btn" onclick="setPeriod('7',this)" style="font-size:12px">Últimos 7 dias</button>
+      <button class="filter-btn" onclick="setPeriod('30',this)" style="font-size:12px">Últimos 30 dias</button>
+      <button class="filter-btn" onclick="setPeriod('90',this)" style="font-size:12px">Últimos 90 dias</button>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- STATS -->
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-card-label">Total Respondentes</div>
+          <div class="stat-card-value" id="s-total">0</div>
+          <div class="stat-card-sub">registros no sistema</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Âncora Mais Comum</div>
+          <div class="stat-card-value" id="s-top" style="font-size:16px;padding-top:4px">—</div>
+          <div class="stat-card-sub" id="s-top-pct">no grupo filtrado</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Média de Pontos</div>
+          <div class="stat-card-value" id="s-avg">—</div>
+          <div class="stat-card-sub">âncora principal</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Visualizando</div>
+          <div class="stat-card-value" id="s-visible">0</div>
+          <div class="stat-card-sub">com filtros atuais</div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-header">
+        <div class="table-title">Respondentes</div>
+        <div class="table-actions">
+          <button class="btn-sm btn-outline" onclick="recarregar()">↻ Atualizar</button>
+          <button class="btn-sm btn-primary" onclick="exportarTodos()">↓ Exportar seleção PDF</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="check-all" onchange="toggleAll(this)" style="accent-color:var(--gold)"></th>
+              <th>Profissional</th>
+              <th>Âncora Principal</th>
+              <th>Pontuação</th>
+              <th>Nível</th>
+              <th>Data</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" style="display:none">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-title">Nenhum respondente encontrado</div>
+          <div class="empty-state-sub">Ajuste os filtros ou aguarde novos registros</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHES -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-modal">
+    <div class="detail-top">
+      <h2 id="det-nome">—</h2>
+      <p id="det-info">—</p>
+      <button class="btn-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-anchor-card">
+        <div class="detail-anchor-sig" id="det-sig"></div>
+        <div>
+          <div class="detail-anchor-name" id="det-aname">—</div>
+          <div class="detail-anchor-pts" id="det-apts">—</div>
+        </div>
+      </div>
+      <div class="detail-bars" id="det-bars"></div>
+      <div class="detail-actions">
+        <button class="detail-btn-pdf" onclick="gerarPDFRespondente(currentRecord)">⬇ Baixar PDF</button>
+        <button class="detail-btn-close" onclick="closeDetail()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   DADOS DAS ÂNCORAS (espelho do formulário)
+══════════════════════════════════════════════════════════════════════ */
+const ANCHORS={
+  TF:{name:'Técnico Funcional',color:'#3b82f6',
+    descricao:'Movido pela excelência técnica e especialização. Prefere aprofundar conhecimentos a gerenciar pessoas. A identidade profissional está intimamente ligada à competência técnica.',
+    motivadores:['Desenvolvimento técnico contínuo','Reconhecimento pela expertise','Autonomia em decisões técnicas','Acesso às últimas tecnologias','Ambiente de aprendizado avançado'],
+    cargos:['Especialista Sênior','Arquiteto de Soluções','Cientista de Dados','Engenheiro Sênior','Consultor Técnico','Tech Lead'],
+    areas:['Tecnologia & Engenharia','Ciência & P&D','Direito Especializado','Medicina','Academia']},
+  GG:{name:'Gerência Geral',color:'#8b5cf6',
+    descricao:'Vocação genuína para liderança executiva e gestão de alta complexidade. Sente-se realizado integrando equipes multifuncionais e tomando decisões estratégicas de grande impacto.',
+    motivadores:['Liderança de equipes grandes','Responsabilidade por resultados','Visibilidade organizacional','Tomada de decisões de alto impacto','Progressão hierárquica'],
+    cargos:['CEO / Presidente','Diretor Executivo','VP de Operações','Country Manager','Gerente Geral','COO'],
+    areas:['Grandes Corporações','Consultoria de Gestão','Setor Público','Bancos e Financeiras']},
+  AI:{name:'Autonomia e Independência',color:'#10b981',
+    descricao:'Independência é inegociável. Trabalha melhor quando pode definir seu próprio ritmo, métodos e objetivos. Restrições excessivas e microgestão são bloqueadores de performance.',
+    motivadores:['Liberdade para definir processos','Ausência de microgestão','Trabalho por resultado','Projetos com escopo flexível','Autonomia de decisão'],
+    cargos:['Consultor Independente','Freelancer Sênior','Professor Universitário','Coach Executivo','Empreendedor Solo'],
+    areas:['Consultoria','Educação Superior','Freelancing','Advocacia Autônoma','Coaching']},
+  SE:{name:'Segurança e Estabilidade',color:'#f59e0b',
+    descricao:'Prioriza previsibilidade, estabilidade financeira e segurança no emprego. Performa melhor em ambientes organizados com planos de carreira claros.',
+    motivadores:['Estabilidade financeira','Plano de carreira previsível','Benefícios robustos','Ambiente organizado','Reconhecimento pela lealdade'],
+    cargos:['Servidor Público','Analista de Grandes Corporações','Bancário','Auditor','Gestor de Risco'],
+    areas:['Setor Público','Bancos Tradicionais','Grandes Multinacionais','Autarquias','Forças Armadas']},
+  CE:{name:'Criatividade e Empreendedorismo',color:'#ef4444',
+    descricao:'Movido pela criação. Construir algo do zero, inovar e ter propriedade sobre os resultados é o que energiza. Alta tolerância ao risco e necessidade intensa de protagonismo.',
+    motivadores:['Criar produtos do zero','Propriedade sobre resultados','Liberdade para inovar','Crescimento escalável','Impacto visível das criações'],
+    cargos:['Fundador de Startup','Empreendedor Serial','Diretor de Inovação','Head de Novos Negócios','Intrapreneur'],
+    areas:['Startups','Venture Capital','Hubs de Inovação','Aceleradoras','Intrapreneurship']},
+  SD:{name:'Serviço e Dedicação',color:'#ec4899',
+    descricao:'Trabalho deve ter propósito e impacto social. Precisa acreditar que a carreira contribui para algo maior. Rejeita posições lucrativas sem impacto real.',
+    motivadores:['Impacto social mensurável','Alinhamento com a missão','Trabalho que transforma vidas','Ambientes empáticos','Reconhecimento pelo propósito'],
+    cargos:['Gestor de ESG','Médico / Enfermeiro','Educador','Assistente Social','Líder de ONG'],
+    areas:['ONGs e Terceiro Setor','Saúde','Educação','ESG Corporativo','Empresas B']},
+  PD:{name:'Puro Desafio',color:'#f97316',
+    descricao:'Energizado por problemas extremamente difíceis. A dificuldade em si é a recompensa. Entedia-se com rotinas previsíveis e busca constantemente o próximo grande desafio.',
+    motivadores:['Problemas complexos e inéditos','Competição intensa','Alta performance sob pressão','Metas aparentemente inalcançáveis','Superar obstáculos extremos'],
+    cargos:['Consultor de Turnaround','Gestor de Crise','Head de Cybersegurança','Trader','Gerente de Projetos Complexos'],
+    areas:['Consultoria Estratégica','Defesa e Segurança','Cybersegurança','Mercado Financeiro']},
+  EV:{name:'Estilo de Vida',color:'#14b8a6',
+    descricao:'Equilíbrio entre vida profissional e pessoal é central e inegociável. Carreira importante, mas não pode sufocar família, saúde e bem-estar. Avalia oportunidades pela qualidade de vida.',
+    motivadores:['Flexibilidade de horários','Trabalho remoto ou híbrido','Cultura que respeita limites','Férias e descanso respeitados','Benefícios de bem-estar'],
+    cargos:['Gerente com Regime Híbrido','Profissional Liberal','Consultor por Projeto','Desenvolvedor Autônomo'],
+    areas:['Empresas Remote-First','Educação','Consultorias Flexíveis','Cooperativas']}
+};
+const ANCHOR_ORDER=['TF','GG','AI','SE','CE','SD','PD','EV'];
+const SIGLA={TF:'TF',GG:'GG',AI:'AI',SE:'SE',CE:'CE',SD:'SD',PD:'PD',EV:'EV'};
+const COLORS={TF:'#3b82f6',GG:'#8b5cf6',AI:'#10b981',SE:'#f59e0b',CE:'#ef4444',SD:'#ec4899',PD:'#f97316',EV:'#14b8a6'};
+
+/* ══════════════════════════════════════════════════════════════════════
+   SENHA
+══════════════════════════════════════════════════════════════════════ */
+const PW_HASH='rh2025'; // senha simples — trocar conforme necessidade
+function checkPw(){
+  const v=document.getElementById('pw-input').value.trim();
+  if(v===PW_HASH){
+    document.getElementById('pw-screen').style.display='none';
+    document.getElementById('main-app').style.display='flex';
+    document.getElementById('main-app').style.flexDirection='column';
+    iniciar();
+  } else {
+    document.getElementById('pw-error').textContent='Senha incorreta. Tente novamente.';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   STORAGE — Lê registros do storage persistente (shared=true)
+   A chave 'ancoras:respondentes' é compartilhada entre formulário e painel
+══════════════════════════════════════════════════════════════════════ */
+let allRecords=[];
+let filtered=[];
+let currentFilter='all';
+let currentPeriod='all';
+let currentRecord=null;
+
+async function carregarDados(){
+  try {
+    const res = await window.storage.get('ancoras:respondentes', true);
+    if(res && res.value){
+      allRecords = JSON.parse(res.value);
+    } else {
+      allRecords = [];
+    }
+  } catch(e){
+    // fallback: demo com dados de exemplo
+    allRecords = getDemoData();
+  }
+  applyFilters();
+  updateStats();
+  updateSidebar();
+}
+
+function getDemoData(){
+  // Dados de demonstração para quando não há registros reais
+  return [
+    {id:'demo1',dataISO:new Date(Date.now()-2*86400000).toISOString(),dataHora:'23/05/2025 14:30',nome:'Ana Paula Souza',email:'ana@empresa.com',cargo:'Gerente de TI',empresa:'TechBrasil',tempo:'10 a 20 anos',nivel:'Gerente',winner:'TF',scores:{TF:26,GG:18,AI:20,SE:14,CE:16,SD:15,PD:22,EV:12}},
+    {id:'demo2',dataISO:new Date(Date.now()-5*86400000).toISOString(),dataHora:'20/05/2025 09:15',nome:'Carlos Mendes',email:'carlos@abc.com',cargo:'Diretor Comercial',empresa:'ABC Ltda',tempo:'Mais de 20 anos',nivel:'Diretor',winner:'GG',scores:{TF:14,GG:27,AI:16,SE:18,CE:20,SD:12,PD:19,EV:14}},
+    {id:'demo3',dataISO:new Date(Date.now()-8*86400000).toISOString(),dataHora:'17/05/2025 16:45',nome:'Fernanda Lima',email:'fern@startup.io',cargo:'Fundadora',empresa:'Startup XYZ',tempo:'5 a 10 anos',nivel:'Empresário / Sócio',winner:'CE',scores:{TF:15,GG:16,AI:22,SE:8,CE:28,SD:14,PD:20,EV:11}},
+    {id:'demo4',dataISO:new Date(Date.now()-12*86400000).toISOString(),dataHora:'13/05/2025 11:00',nome:'Roberto Alves',email:'rob@gov.br',cargo:'Analista',empresa:'Ministério X',tempo:'10 a 20 anos',nivel:'Analista / Especialista',winner:'SE',scores:{TF:18,GG:12,AI:10,SE:25,CE:9,SD:20,PD:11,EV:22}},
+    {id:'demo5',dataISO:new Date(Date.now()-20*86400000).toISOString(),dataHora:'05/05/2025 08:30',nome:'Juliana Costa',email:'ju@ong.org',cargo:'Coordenadora Social',empresa:'Instituto Vida',tempo:'5 a 10 anos',nivel:'Coordenador / Supervisor',winner:'SD',scores:{TF:12,GG:14,AI:16,SE:13,CE:15,SD:27,PD:10,EV:18}},
+  ];
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FILTROS
+══════════════════════════════════════════════════════════════════════ */
+function setFilter(key, btn){
+  currentFilter=key;
+  document.querySelectorAll('.filter-btn').forEach(b=>{
+    if(b.id&&b.id.startsWith('f-')||b.onclick&&b.onclick.toString().includes("setFilter"))
+      b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function setPeriod(days, btn){
+  currentPeriod=days;
+  document.querySelectorAll('.filter-btn').forEach(b=>{
+    if(b.onclick&&b.onclick.toString().includes("setPeriod")) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters(){
+  const search=(document.getElementById('search-input')||{}).value?.toLowerCase()||'';
+  const now=Date.now();
+  filtered=allRecords.filter(r=>{
+    if(currentFilter!=='all' && r.winner!==currentFilter) return false;
+    if(currentPeriod!=='all'){
+      const days=parseInt(currentPeriod);
+      const dt=r.dataISO?new Date(r.dataISO).getTime():0;
+      if(now-dt > days*86400000) return false;
+    }
+    if(search){
+      const hay=(r.nome+r.empresa+r.email+r.cargo).toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  renderTable();
+  updateStats();
+}
+
+function updateSidebar(){
+  document.getElementById('fc-all').textContent=allRecords.length;
+  ANCHOR_ORDER.forEach(k=>{
+    const el=document.getElementById('fc-'+k);
+    if(el) el.textContent=allRecords.filter(r=>r.winner===k).length;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   STATS
+══════════════════════════════════════════════════════════════════════ */
+function updateStats(){
+  const total=allRecords.length;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('s-total').textContent=total;
+  document.getElementById('s-visible').textContent=filtered.length;
+
+  if(filtered.length===0){
+    document.getElementById('s-top').textContent='—';
+    document.getElementById('s-top-pct').textContent='sem dados';
+    document.getElementById('s-avg').textContent='—';
+    return;
+  }
+  // Ancora mais comum
+  const counts={};
+  filtered.forEach(r=>{counts[r.winner]=(counts[r.winner]||0)+1;});
+  const topKey=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+  document.getElementById('s-top').textContent=ANCHORS[topKey]?.name||topKey;
+  document.getElementById('s-top-pct').textContent=counts[topKey]+' de '+filtered.length+' respondentes';
+  // Media pontos
+  const avg=filtered.reduce((s,r)=>{
+    const pts=r.scores?r.scores[r.winner]:0;
+    return s+pts;
+  },0)/filtered.length;
+  document.getElementById('s-avg').textContent=avg.toFixed(1);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TABELA
+══════════════════════════════════════════════════════════════════════ */
+function renderTable(){
+  const tbody=document.getElementById('table-body');
+  const empty=document.getElementById('empty-state');
+
+  if(filtered.length===0){
+    tbody.innerHTML='';
+    empty.style.display='block';
+    return;
+  }
+  empty.style.display='none';
+
+  // Ordenar por data desc
+  const sorted=[...filtered].sort((a,b)=>new Date(b.dataISO||0)-new Date(a.dataISO||0));
+
+  tbody.innerHTML=sorted.map((r,i)=>{
+    const a=ANCHORS[r.winner]||{};
+    const pts=r.scores?r.scores[r.winner]:0;
+    const pct=Math.round(pts/30*100);
+    const dateFmt=r.dataHora||(r.dataISO?new Date(r.dataISO).toLocaleString('pt-BR'):'—');
+    return `<tr onclick="openDetail('${r.id||i}')">
+      <td onclick="event.stopPropagation()">
+        <input type="checkbox" class="row-check" data-id="${r.id||i}" style="accent-color:var(--accent2)">
+      </td>
+      <td>
+        <div class="td-name">${escHtml(r.nome)}</div>
+        <div class="td-sub">${escHtml([r.cargo,r.empresa].filter(Boolean).join(' · '))}</div>
+      </td>
+      <td>
+        <span class="anchor-badge" style="background:${a.color}18;color:${a.color}">
+          <span style="font-weight:800">${r.winner}</span> ${a.name||''}
+        </span>
+      </td>
+      <td>
+        <div class="score-bar-wrap">
+          <div class="score-bar-track">
+            <div class="score-bar-fill" style="width:${pct}%;background:${a.color}"></div>
+          </div>
+          <span class="score-num" style="color:${a.color}">${pts}</span>
+        </div>
+      </td>
+      <td><span style="font-size:12px;color:var(--muted)">${escHtml(r.nivel||'—')}</span></td>
+      <td><span class="date-txt">${dateFmt.slice(0,10)}</span></td>
+      <td>
+        <div class="action-cell" onclick="event.stopPropagation()">
+          <button class="btn-pdf-sm" onclick="gerarPDFRespondente(getById('${r.id||i}'))">PDF</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function getById(id){
+  return allRecords.find(r=>String(r.id)===String(id)) ||
+         filtered.find((_,i)=>String(i)===String(id));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SELEÇÃO / EXPORTAR TODOS
+══════════════════════════════════════════════════════════════════════ */
+function toggleAll(chk){
+  document.querySelectorAll('.row-check').forEach(c=>c.checked=chk.checked);
+}
+
+async function exportarTodos(){
+  const checked=[...document.querySelectorAll('.row-check:checked')];
+  if(checked.length===0){showToast('Selecione ao menos um respondente');return;}
+  const ids=checked.map(c=>c.dataset.id);
+  const recs=ids.map(id=>getById(id)).filter(Boolean);
+  showToast(`Gerando ${recs.length} PDF(s)...`);
+  for(const r of recs){
+    await gerarPDFRespondente(r,false);
+    await new Promise(res=>setTimeout(res,400));
+  }
+  showToast(`✓ ${recs.length} PDF(s) gerado(s)!`);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODAL DETALHES
+══════════════════════════════════════════════════════════════════════ */
+function openDetail(id){
+  const r=getById(id);
+  if(!r)return;
+  currentRecord=r;
+  const a=ANCHORS[r.winner]||{};
+  const pts=r.scores?r.scores[r.winner]:0;
+
+  document.getElementById('det-nome').textContent=r.nome||'—';
+  document.getElementById('det-info').textContent=[r.cargo,r.empresa,r.email].filter(Boolean).join(' · ');
+
+  const sig=document.getElementById('det-sig');
+  sig.textContent=r.winner;
+  sig.style.background=a.color||'#888';
+
+  document.getElementById('det-aname').textContent=a.name||r.winner;
+  document.getElementById('det-apts').textContent=`${pts} / 30 pts · ${Math.round(pts/30*100)}% de aderência`;
+
+  // Barras
+  const bars=document.getElementById('det-bars');
+  bars.innerHTML='';
+  if(r.scores){
+    const sorted=Object.entries(r.scores).sort((a,b)=>b[1]-a[1]);
+    sorted.forEach(([k,sc])=>{
+      const anc=ANCHORS[k]||{};
+      bars.innerHTML+=`<div class="dbar-row">
+        <div class="dbar-name"><span class="dbar-dot" style="background:${anc.color}"></span>${anc.name||k}</div>
+        <div class="dbar-track"><div class="dbar-fill" style="width:${Math.round(sc/30*100)}%;background:${anc.color}"></div></div>
+        <div class="dbar-score" style="color:${anc.color}">${sc}</div>
+      </div>`;
+    });
+  }
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeDetail(){
+  document.getElementById('overlay').classList.remove('open');
+  currentRecord=null;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   GERAÇÃO DE PDF (por respondente)
+══════════════════════════════════════════════════════════════════════ */
+function gerarPDFRespondente(rec, notify=true){
+  if(!rec){showToast('Dados não encontrados');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,H=297,M=18,CW=W-M*2;
+  let pg=1;
+
+  const scores=rec.scores||{TF:0,GG:0,AI:0,SE:0,CE:0,SD:0,PD:0,EV:0};
+  const sorted=ANCHOR_ORDER.map(k=>[k,scores[k]||0]).sort((a,b)=>b[1]-a[1]);
+  const winner=rec.winner||sorted[0][0];
+  const aw=ANCHORS[winner]||{name:winner,color:'#666',descricao:'',motivadores:[],cargos:[],areas:[]};
+  const maxPts=30;
+  const [ar,ag,ab]=rgb(aw.color);
+  const dataHoje=rec.dataHora||new Date(rec.dataISO||Date.now()).toLocaleDateString('pt-BR');
+
+  function rgb(hex){hex=hex||'#888888';return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];}
+  function fnt(st,sz,r,g,b){doc.setFont('helvetica',st);doc.setFontSize(sz);doc.setTextColor(r??10,g??10,b??15);}
+  function fil(r,g,b){doc.setFillColor(r,g,b);}
+  function str(r,g,b,w){doc.setDrawColor(r,g,b);doc.setLineWidth(w||0.3);}
+  function t(s,x,y,o){doc.text(String(s),x,y,o||{});}
+
+  function rodape(){
+    fil(246,246,246);doc.rect(0,H-14,W,14,'F');
+    str(225,225,225);doc.line(0,H-14,W,H-14);
+    fnt('normal',7,150,150,150);t('Sistema de Carreira  |  Ancoras de Carreira  |  Metodologia Edgar Schein',M,H-5);
+    fnt('bold',7,100,100,100);t(rec.nome||'',W/2,H-5,{align:'center'});
+    fnt('normal',7,150,150,150);t('Pag. '+pg,W-M,H-5,{align:'right'});
+    pg++;
+  }
+
+  function novaPag(sup,tit){
+    doc.addPage();fil(255,255,255);doc.rect(0,0,W,H,'F');
+    fil(ar,ag,ab);doc.rect(0,0,W,3,'F');
+    fnt('bold',7,ar,ag,ab);t(sup,M,12);
+    fnt('bold',18,10,10,15);t(tit,M,23);
+    str(230,230,230);doc.line(M,27,W-M,27);
+    return 34;
+  }
+
+  /* P1 CAPA */
+  fil(255,255,255);doc.rect(0,0,W,H,'F');
+  fil(ar,ag,ab);doc.rect(0,0,W,60,'F');
+  str(255,255,255,0.2);doc.circle(W-20,30,28);doc.circle(W-10,50,18);
+  fnt('bold',36,255,255,255);t('['+winner+']',W-M,46,{align:'right'});
+  fnt('bold',7.5,255,255,255);t('SISTEMA DE CARREIRA  |  MODULO 1  |  DIAGNOSTICO',M,15);
+  fnt('bold',38,15,15,20);t('ANCORAS',M,80);t('DE CARREIRA',M,96);
+  fnt('normal',10,130,130,130);t('Diagnostico baseado na metodologia de Edgar Schein',M,107);
+  str(230,228,225,0.5);doc.line(M,114,W-M,114);
+  fnt('bold',7,155,153,150);t('PROFISSIONAL',M,124);
+  fnt('bold',19,10,10,15);t(rec.nome||'',M,135);
+  fnt('normal',9.5,100,98,95);
+  const iL=[rec.cargo,rec.empresa,rec.email].filter(Boolean).join('  |  ');
+  t(iL,M,144);
+  const meta=[[rec.tempo||'—','TEMPO DE CARREIRA'],[rec.nivel||'—','NIVEL HIERARQUICO'],[dataHoje,'DATA DO DIAGNOSTICO'],['40 questoes','INSTRUMENTO']];
+  meta.forEach(([v,l],i)=>{
+    const cx=M+(i%2)*91,cy=158+Math.floor(i/2)*28;
+    fil(248,248,248);doc.roundedRect(cx,cy,84,22,2,2,'F');
+    str(230,228,225,0.3);doc.roundedRect(cx,cy,84,22,2,2,'S');
+    fnt('bold',6.5,150,148,145);t(l,cx+5,cy+8);fnt('bold',9.5,10,10,15);t(v,cx+5,cy+17);
+  });
+  fil(ar,ag,ab);doc.roundedRect(M,222,CW,55,4,4,'F');
+  fnt('bold',7.5,255,255,255);t('ANCORA PRINCIPAL IDENTIFICADA',M+10,233);
+  fnt('bold',22,255,255,255);t(aw.name,M+10,247);
+  fnt('normal',9,255,255,255);t('Pontuacao: '+scores[winner]+' / '+maxPts+' pts',M+10,257);
+  fnt('bold',34,255,255,255);t(Math.round(scores[winner]/maxPts*100)+'%',W-M-6,253,{align:'right'});
+  fnt('normal',7.5,255,255,255);t('de aderencia',W-M-6,261,{align:'right'});
+  rodape();
+
+  /* P2 BARRAS */
+  let y=novaPag('RESULTADOS DETALHADOS','Pontuacao por Ancora');
+  fnt('normal',7.5,130,130,130);t('Escala: 0 a 30 pontos por ancora (5 questoes x nota max. 6)',M,y);y+=6;
+  const ROW=23,NOME_W=62,BAR_X=M+NOME_W+6,BAR_W=CW-NOME_W-22;
+  sorted.forEach(([key,score],idx)=>{
+    const a=ANCHORS[key]||{};const [r,g,b]=rgb(a.color);const pct=score/maxPts;const isW=idx===0;
+    if(isW){fil(r,g,b);}else{fil(idx%2===0?250:255,idx%2===0?250:255,idx%2===0?250:255);}
+    doc.roundedRect(M,y,CW,ROW-2,2,2,'F');
+    if(isW){str(r,g,b,0.8);doc.roundedRect(M,y,CW,ROW-2,2,2,'S');}
+    fil(isW?255:r,isW?255:g,isW?255:b);doc.roundedRect(M+3,y+3,10,ROW-8,1.5,1.5,'F');
+    fnt('bold',7,isW?r:255,isW?g:255,isW?b:255);t(key,M+8,y+ROW-9,{align:'center'});
+    fnt(isW?'bold':'normal',9,isW?255:20,isW?255:20,isW?255:25);t((a.name||key),M+16,y+ROW-7);
+    fil(isW?200:230,isW?200:230,isW?200:230);doc.roundedRect(BAR_X,y+5,BAR_W,7,2,2,'F');
+    if(pct>0){fil(isW?255:r,isW?255:g,isW?255:b);doc.roundedRect(BAR_X,y+5,Math.max(BAR_W*pct,3),7,2,2,'F');}
+    fnt('bold',11,isW?255:r,isW?255:g,isW?255:b);t(score,W-M,y+ROW-6,{align:'right'});
+    y+=ROW;
+  });
+  y+=8;
+  fil(ar,ag,ab);doc.roundedRect(M,y,CW,7,2,2,'F');
+  fnt('bold',8,255,255,255);t('PERFIL E MOTIVACAO  —  '+aw.name.toUpperCase(),M+5,y+5);y+=12;
+  const dL=doc.splitTextToSize(aw.descricao||'',CW-4);
+  fnt('normal',8.5,35,33,30);doc.text(dL,M+2,y);y+=dL.length*4.5+6;
+  fnt('bold',8,ar,ag,ab);t('MOTIVADORES-CHAVE',M,y);y+=5;
+  (aw.motivadores||[]).forEach(m=>{
+    fil(248,248,248);doc.roundedRect(M,y-3,CW,8,1.5,1.5,'F');
+    fnt('normal',8.5,40,38,35);t('>  '+m,M+4,y+2);y+=10;
+  });
+  rodape();
+
+  /* P3 CARGOS E AREAS */
+  y=novaPag('SUGESTOES DE CARREIRA','Cargos e Areas — '+aw.name);
+  fnt('bold',8,ar,ag,ab);t('CARGOS SUGERIDOS',M,y);y+=5;
+  const CW2=84,GAP=6;
+  const cr=Math.ceil((aw.cargos||[]).length/2);
+  (aw.cargos||[]).forEach((c,i)=>{
+    const cx=M+(i%2)*(CW2+GAP),cy3=y+Math.floor(i/2)*14;
+    fil(Math.min(255,ar+195),Math.min(255,ag+195),Math.min(255,ab+195));
+    doc.roundedRect(cx,cy3-3.5,CW2,11,2,2,'F');
+    str(ar,ag,ab,0.3);doc.roundedRect(cx,cy3-3.5,CW2,11,2,2,'S');
+    fnt('normal',8.5,10,10,15);t(doc.splitTextToSize(c,CW2-8)[0],cx+4,cy3+3.5);
+  });
+  y+=cr*14+10;
+  fnt('bold',8,ar,ag,ab);t('AREAS IDEAIS',M,y);y+=5;
+  const ar2=Math.ceil((aw.areas||[]).length/2);
+  (aw.areas||[]).forEach((a2,i)=>{
+    const cx=M+(i%2)*(CW2+GAP),cy3=y+Math.floor(i/2)*14;
+    fil(248,246,242);doc.roundedRect(cx,cy3-3.5,CW2,11,2,2,'F');
+    fil(ar,ag,ab);doc.roundedRect(cx,cy3-3.5,3,11,1,1,'F');
+    fnt('normal',8.5,10,10,15);t(doc.splitTextToSize(a2,CW2-10)[0],cx+7,cy3+3.5);
+  });
+  y+=ar2*14+14;
+  fil(248,248,248);doc.roundedRect(M,y,CW,32,3,3,'F');
+  str(ar,ag,ab,0.5);doc.roundedRect(M,y,CW,32,3,3,'S');
+  fnt('bold',8,ar,ag,ab);t('DICA DE ALINHAMENTO DE CARREIRA',M+6,y+8);
+  const dica='Profissionais com ancora '+aw.name+' se realizam plenamente quando o ambiente respeita seus motivadores centrais. Avalie se a cultura, o modelo de gestao e o escopo do cargo estao alinhados ao seu perfil antes de aceitar.';
+  fnt('normal',8,50,48,45);doc.text(doc.splitTextToSize(dica,CW-12),M+6,y+16);
+  rodape();
+
+  /* P4-7 RESUMO ANCORAS */
+  const pairs=[];for(let i=0;i<ANCHOR_ORDER.length;i+=2)pairs.push([ANCHOR_ORDER[i],ANCHOR_ORDER[i+1]].filter(Boolean));
+  pairs.forEach((pair,pi)=>{
+    doc.addPage();fil(255,255,255);doc.rect(0,0,W,H,'F');
+    fil(10,10,15);doc.rect(0,0,W,3,'F');
+    fnt('bold',7,150,150,150);t('GUIA DE REFERENCIA — AS 8 ANCORAS DE CARREIRA',M,12);
+    fnt('bold',17,10,10,15);t('Resumo Completo — Pag '+(pi+1)+' de '+pairs.length,M,22);
+    str(230,230,230,0.4);doc.line(M,26,W-M,26);
+    let ay=32;
+    pair.forEach((key,ki)=>{
+      const a=ANCHORS[key]||{};const [r,g,b]=rgb(a.color);
+      const sc=scores[key]||0;const pct=Math.round(sc/maxPts*100);const isW=key===winner;
+      if(isW){str(r,g,b,1);doc.roundedRect(M-1,ay-1,CW+2,123,3,3,'S');}
+      fil(r,g,b);doc.roundedRect(M,ay,CW,17,3,3,'F');
+      fil(255,255,255);doc.roundedRect(M+3,ay+3,13,11,2,2,'F');
+      fnt('bold',8,r,g,b);t(key,M+9.5,ay+10.5,{align:'center'});
+      fnt('bold',13,255,255,255);t(a.name||key,M+20,ay+11.5);
+      fil(255,255,255);doc.roundedRect(W-M-38,ay+3.5,34,10,2,2,'F');
+      fnt('bold',8.5,r,g,b);t(sc+' pts  |  '+pct+'%',W-M-21,ay+10.5,{align:'center'});
+      if(isW){fil(255,255,255);doc.roundedRect(W-M-78,ay+3.5,37,10,2,2,'F');fnt('bold',7,r,g,b);t('★ SUA ANCORA',W-M-59.5,ay+10.5,{align:'center'});}
+      ay+=21;
+      const bw3=CW-4;fil(230,230,230);doc.roundedRect(M+2,ay,bw3,6,2,2,'F');
+      fil(r,g,b);doc.roundedRect(M+2,ay,Math.max(bw3*sc/maxPts,2),6,2,2,'F');
+      fnt('bold',7,r,g,b);t(pct+'%',M+2+bw3+2,ay+5);ay+=11;
+      const dLs=doc.splitTextToSize(a.descricao||'',CW-4);
+      fnt('normal',8,45,43,40);doc.text(dLs.slice(0,3),M+2,ay);ay+=dLs.slice(0,3).length*4.4+4;
+      fnt('bold',7,r,g,b);t('CARGOS:',M+2,ay);fnt('normal',7.5,50,48,45);
+      const cStr=(a.cargos||[]).slice(0,7).join('  ·  ');const cLs=doc.splitTextToSize(cStr,CW-22);
+      doc.text(cLs.slice(0,2),M+22,ay);ay+=cLs.slice(0,2).length*4+3;
+      fnt('bold',7,r,g,b);t('AREAS:',M+2,ay);fnt('normal',7.5,50,48,45);
+      const aStr=(a.areas||[]).join('  ·  ');const aLs=doc.splitTextToSize(aStr,CW-20);
+      doc.text(aLs.slice(0,2),M+20,ay);ay+=aLs.slice(0,2).length*4+3;
+      fnt('bold',7,r,g,b);t('MOTIVADORES:',M+2,ay);fnt('normal',7.5,50,48,45);
+      const mStr=(a.motivadores||[]).slice(0,4).join('  ·  ');const mLs=doc.splitTextToSize(mStr,CW-30);
+      doc.text(mLs.slice(0,2),M+30,ay);ay+=mLs.slice(0,2).length*4+4;
+      if(ki===0&&pair.length>1){str(230,228,225,0.4);doc.line(M,ay,W-M,ay);ay+=8;}
+    });
+    rodape();
+  });
+
+  const safe=(rec.nome||'respondente').replace(/[^a-z0-9]/gi,'_');
+  doc.save('Ancoras_Carreira_'+safe+'.pdf');
+  if(notify)showToast('✓ PDF gerado: '+rec.nome);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════════════════════ */
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+async function recarregar(){
+  showToast('Atualizando...');
+  await carregarDados();
+  showToast('✓ Dados atualizados');
+}
+
+function iniciar(){carregarDados();}
+</script>
+</body>
+</html>
