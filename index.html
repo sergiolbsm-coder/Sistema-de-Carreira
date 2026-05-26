@@ -159,9 +159,6 @@ h1 span{color:var(--gold)}
 .btn-pdf{flex:1;padding:14px 22px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
 .btn-pdf:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(200,64,30,.35)}
 
-.btn-drive{flex:1;padding:14px 22px;background:#1a73e8;color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:8px;min-width:150px}
-.btn-drive:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,115,232,.4)}
-.btn-drive:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .btn-retry{padding:14px 22px;background:transparent;color:var(--ink);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:border-color .15s}
 .btn-retry:hover{border-color:var(--ink)}
 .drive-status{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--muted);text-align:center;min-height:16px;margin-top:8px;transition:color .2s}
@@ -333,7 +330,6 @@ h1 span{color:var(--gold)}
 
       <div class="modal-actions">
         <button class="btn-pdf" onclick="gerarPDF()">⬇ Baixar PDF</button>
-        <button class="btn-drive" id="btn-drive" onclick="salvarNoDrive()">☁ Salvar no Drive</button>
         <button class="btn-retry" onclick="reiniciar()">Refazer</button>
       </div>
       <div class="drive-status" id="drive-status"></div>
@@ -541,6 +537,8 @@ function calcularResultado(){
   salvarNoStorage(G);
   renderModal();
   document.getElementById('modal').classList.add('open');
+  // Salvar automaticamente no Drive após mostrar resultado
+  setTimeout(()=>iniciarSalvamentoDrive(),1200);
 }
 
 // ─── SALVAR NO STORAGE CENTRAL ────────────────────────────────────────────────
@@ -1018,90 +1016,82 @@ function reiniciar(){
 const DRIVE_CLIENT_ID='250168021925-6u14e92j9qr71irgvfa3nl6i0urlcrj8.apps.googleusercontent.com';
 const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
 const DRIVE_FOLDER_NAME='Sistema de Carreira — PDFs';
+// URI exata cadastrada no Google Cloud (sem hash/query)
+const DRIVE_REDIRECT='https://sergiolbsm-coder.github.io/Sistema-de-Carreira/index.html';
 let driveToken=null;
 
 function driveStatus(msg,cls=''){
   const el=document.getElementById('drive-status');
-  el.textContent=msg;el.className='drive-status'+(cls?' '+cls:'');
+  if(el){el.textContent=msg;el.className='drive-status'+(cls?' '+cls:'');}
 }
 
-// Iniciar fluxo OAuth popup
-function salvarNoDrive(){
-  driveStatus('Conectando ao Google Drive...');
-  document.getElementById('btn-drive').disabled=true;
-
-  // Abre popup OAuth
-  const params=new URLSearchParams({
-    client_id:DRIVE_CLIENT_ID,
-    redirect_uri:location.origin+location.pathname,
-    response_type:'token',
-    scope:DRIVE_SCOPE,
-    prompt:'consent'
-  });
-  const popup=window.open(
-    'https://accounts.google.com/o/oauth2/v2/auth?'+params,
-    'oauth','width=500,height=620,left=300,top=100'
-  );
-
-  // Escuta o retorno do popup via postMessage (fragment redirect)
-  window.addEventListener('message',function handler(e){
-    if(e.data&&e.data.type==='drive_token'){
-      driveToken=e.data.token;
-      window.removeEventListener('message',handler);
-      uploadPDFtoDrive();
-    }
-  });
-
-  // Fallback: detecta quando popup fecha sem token (usuário cancelou)
-  const check=setInterval(()=>{
-    if(popup&&popup.closed){
-      clearInterval(check);
-      if(!driveToken){
-        driveStatus('Login cancelado.','err');
-        document.getElementById('btn-drive').disabled=false;
-      }
-    }
-  },800);
-}
-
-// Se esta página for o redirect do OAuth (fragment com access_token)
+// Detectar redirect OAuth ao carregar a página
 (function checkOAuthRedirect(){
   const hash=location.hash;
-  if(hash&&hash.includes('access_token')){
-    const params=new URLSearchParams(hash.slice(1));
-    const token=params.get('access_token');
-    if(token&&window.opener){
-      window.opener.postMessage({type:'drive_token',token},'*');
-      window.close();
-    }
+  if(!hash||!hash.includes('access_token'))return;
+  const p=new URLSearchParams(hash.slice(1));
+  const token=p.get('access_token');
+  if(!token)return;
+  history.replaceState(null,'',location.pathname);
+  driveToken=token;
+  if(window.opener){
+    window.opener.postMessage({type:'drive_token',token},'*');
+    window.close();
   }
 })();
 
+// Acionado automaticamente após concluir o formulário
+async function iniciarSalvamentoDrive(){
+  if(!driveToken){
+    driveStatus('Abrindo login Google Drive...');
+    const params=new URLSearchParams({
+      client_id:DRIVE_CLIENT_ID,
+      redirect_uri:DRIVE_REDIRECT,
+      response_type:'token',
+      scope:DRIVE_SCOPE,
+      prompt:'select_account'
+    });
+    const url='https://accounts.google.com/o/oauth2/v2/auth?'+params;
+    const popup=window.open(url,'oauth_drive','width=500,height=620,left=300,top=80');
+    if(!popup||popup.closed){
+      driveStatus('Popup bloqueado. Habilite popups para este site.','err');return;
+    }
+    try{
+      await new Promise((resolve,reject)=>{
+        const h=function(e){
+          if(e.data&&e.data.type==='drive_token'){
+            driveToken=e.data.token;
+            window.removeEventListener('message',h);
+            clearInterval(chk);resolve();
+          }
+        };
+        window.addEventListener('message',h);
+        const chk=setInterval(()=>{
+          if(popup.closed){clearInterval(chk);if(!driveToken){window.removeEventListener('message',h);reject(new Error('cancelado'));}}
+        },600);
+      });
+    }catch(e){
+      driveStatus('Login cancelado. O PDF foi baixado normalmente.','err');return;
+    }
+  }
+  await uploadPDFtoDrive();
+}
+
 async function uploadPDFtoDrive(){
-  driveStatus('Gerando PDF...');
   try{
-    // Gerar PDF como blob
+    driveStatus('Gerando PDF para o Drive...');
     const pdfBlob=await gerarPDFBlob();
-
-    driveStatus('Procurando pasta no Drive...');
-    // Buscar ou criar pasta
+    driveStatus('Criando pasta no Drive...');
     const folderId=await encontrarOuCriarPasta(DRIVE_FOLDER_NAME);
-
-    driveStatus('Enviando para o Drive...');
-    // Fazer upload
+    driveStatus('Enviando PDF...');
     const safeName=(G.nome||'respondente').replace(/[^a-z0-9]/gi,'_');
-    const fileName=`Ancoras_Carreira_${safeName}_${new Date().toISOString().slice(0,10)}.pdf`;
-    const fileId=await uploadArquivo(pdfBlob,fileName,folderId);
-
-    driveStatus(`✓ Salvo no Drive: ${fileName}`,'ok');
+    const fileName='Ancoras_'+safeName+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+    await uploadArquivo(pdfBlob,fileName,folderId);
+    driveStatus('✓ PDF salvo automaticamente no Google Drive!','ok');
     showToast('✓ PDF salvo no Google Drive!');
-    document.getElementById('btn-drive').disabled=false;
-    document.getElementById('btn-drive').textContent='✓ Salvo no Drive';
   }catch(e){
-    console.error(e);
-    driveStatus('Erro ao salvar no Drive: '+e.message,'err');
-    document.getElementById('btn-drive').disabled=false;
-    showToast('✗ Falha ao salvar no Drive');
+    console.error('Drive:',e);
+    driveStatus('Não foi possível salvar no Drive. O PDF foi baixado normalmente.','err');
   }
 }
 
