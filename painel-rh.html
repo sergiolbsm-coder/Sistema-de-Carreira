@@ -166,6 +166,9 @@ tbody td{padding:12px 14px;font-size:13px;vertical-align:middle}
     <div class="topbar-sep"></div>
     <div class="topbar-title">Painel RH · Âncoras de Carreira</div>
     <div class="topbar-right">
+      <button onclick="carregarArquivosDrive()" style="padding:7px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">
+        ☁ Carregar do Drive
+      </button>
       <div class="topbar-stat">
         <div class="topbar-stat-n" id="stat-total">0</div>
         <div class="topbar-stat-l">respondentes</div>
@@ -367,8 +370,92 @@ const SIGLA={TF:'TF',GG:'GG',AI:'AI',SE:'SE',CE:'CE',SD:'SD',PD:'PD',EV:'EV'};
 const COLORS={TF:'#3b82f6',GG:'#8b5cf6',AI:'#10b981',SE:'#f59e0b',CE:'#ef4444',SD:'#ec4899',PD:'#f97316',EV:'#14b8a6'};
 
 /* ══════════════════════════════════════════════════════════════════════
-   SENHA
+   GOOGLE DRIVE — listar PDFs da pasta
 ══════════════════════════════════════════════════════════════════════ */
+const DRIVE_CLIENT_ID='250168021925-6u14e92j9qr71irgvfa3nl6i0urlcrj8.apps.googleusercontent.com';
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
+const DRIVE_FOLDER_NAME='Sistema de Carreira — PDFs';
+let driveToken=null;
+let driveFiles=[];
+
+async function conectarDrive(){
+  return new Promise((resolve,reject)=>{
+    const params=new URLSearchParams({
+      client_id:DRIVE_CLIENT_ID,
+      redirect_uri:location.origin+location.pathname,
+      response_type:'token',
+      scope:DRIVE_SCOPE,
+      prompt:'consent'
+    });
+    const popup=window.open('https://accounts.google.com/o/oauth2/v2/auth?'+params,'oauth','width=500,height=620,left=300,top=100');
+    window.addEventListener('message',function h(e){
+      if(e.data&&e.data.type==='drive_token'){
+        driveToken=e.data.token;
+        window.removeEventListener('message',h);
+        resolve(driveToken);
+      }
+    });
+    const chk=setInterval(()=>{if(popup&&popup.closed){clearInterval(chk);if(!driveToken)reject(new Error('Login cancelado'));}},800);
+  });
+}
+
+// Detectar redirect OAuth nesta página
+(function(){
+  const h=location.hash;
+  if(h&&h.includes('access_token')){
+    const p=new URLSearchParams(h.slice(1));
+    const tk=p.get('access_token');
+    if(tk&&window.opener){window.opener.postMessage({type:'drive_token',token:tk},'*');window.close();}
+  }
+})();
+
+async function carregarArquivosDrive(){
+  showToast('Conectando ao Google Drive...');
+  try{
+    await conectarDrive();
+    // Achar pasta
+    const q=encodeURIComponent(`name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const fr=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`,{headers:{Authorization:'Bearer '+driveToken}});
+    const fd=await fr.json();
+    if(!fd.files||!fd.files.length){showToast('Pasta não encontrada no Drive.');return;}
+    const folderId=fd.files[0].id;
+    // Listar PDFs
+    const q2=encodeURIComponent(`'${folderId}' in parents and mimeType='application/pdf' and trashed=false`);
+    const lr=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q2}&fields=files(id,name,createdTime,webViewLink,size)&orderBy=createdTime desc&pageSize=200`,{headers:{Authorization:'Bearer '+driveToken}});
+    const ld=await lr.json();
+    driveFiles=ld.files||[];
+    mostrarArquivosDrive();
+    showToast(`✓ ${driveFiles.length} PDF(s) encontrados no Drive`);
+  }catch(e){
+    showToast('Erro: '+e.message);
+  }
+}
+
+function mostrarArquivosDrive(){
+  const tbody=document.getElementById('table-body');
+  const empty=document.getElementById('empty-state');
+  if(!driveFiles.length){empty.style.display='block';tbody.innerHTML='';return;}
+  empty.style.display='none';
+  tbody.innerHTML=driveFiles.map(f=>{
+    const nome=f.name.replace('Ancoras_Carreira_','').replace(/_/g,' ').replace('.pdf','');
+    const data=f.createdTime?new Date(f.createdTime).toLocaleString('pt-BR').slice(0,10):'—';
+    const kb=f.size?Math.round(f.size/1024)+'KB':'—';
+    return `<tr>
+      <td><input type="checkbox" class="row-check" style="accent-color:var(--accent2)"></td>
+      <td><div class="td-name">📄 ${escHtml(nome)}</div><div class="td-sub">${kb}</div></td>
+      <td><span class="anchor-badge" style="background:#e8f0fe;color:#1a73e8">PDF</span></td>
+      <td>—</td><td>—</td>
+      <td><span class="date-txt">${data}</span></td>
+      <td>
+        <a href="${escHtml(f.webViewLink)}" target="_blank" class="btn-pdf-sm" style="text-decoration:none">Abrir</a>
+      </td>
+    </tr>`;
+  }).join('');
+  // Atualizar stats
+  document.getElementById('stat-total').textContent=driveFiles.length;
+  document.getElementById('s-total').textContent=driveFiles.length;
+  document.getElementById('s-visible').textContent=driveFiles.length;
+}
 const PW_HASH='rh2025'; // senha simples — trocar conforme necessidade
 function checkPw(){
   const v=document.getElementById('pw-input').value.trim();
