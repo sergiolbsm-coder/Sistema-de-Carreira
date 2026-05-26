@@ -529,8 +529,41 @@ function calcularResultado(){
      tempo:document.getElementById('f-tempo').value,
      nivel:document.getElementById('f-nivel').value};
 
+  salvarNoStorage(G);
   renderModal();
   document.getElementById('modal').classList.add('open');
+}
+
+// ─── SALVAR NO STORAGE CENTRAL ────────────────────────────────────────────────
+async function salvarNoStorage(data){
+  try{
+    const key='ancoras:respondentes';
+    let registros=[];
+    try{
+      const atual=await window.storage.get(key,true);
+      if(atual&&atual.value) registros=JSON.parse(atual.value);
+    }catch(e){}
+
+    const registro={
+      id:'r_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      dataISO:new Date().toISOString(),
+      dataHora:new Date().toLocaleString('pt-BR'),
+      nome:data.nome, email:data.email,
+      cargo:data.cargo, empresa:data.empresa,
+      tempo:data.tempo, nivel:data.nivel,
+      winner:data.winner,
+      scores:{
+        TF:data.scores.TF,GG:data.scores.GG,AI:data.scores.AI,SE:data.scores.SE,
+        CE:data.scores.CE,SD:data.scores.SD,PD:data.scores.PD,EV:data.scores.EV
+      }
+    };
+    registros.unshift(registro);
+    // Manter máx 500 registros
+    if(registros.length>500) registros=registros.slice(0,500);
+    await window.storage.set(key,JSON.stringify(registros),true);
+  }catch(e){
+    console.warn('Storage indisponível:',e);
+  }
 }
 
 // ─── RENDER MODAL ─────────────────────────────────────────────────────────────
